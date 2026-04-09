@@ -1,0 +1,405 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+    <meta charset="UTF-8">
+    <title>木製ゲームDX - 完全版</title>
+    <style>
+        :root {
+            --wood-dark: #5d4037; --wood-medium: #8d6e63; --wood-light: #d7ccc8; --bg: #3e2723; --accent: #fdd835;
+        }
+        body {
+            font-family: 'Hiragino Mincho ProN', 'Yu Mincho', serif; background: var(--bg);
+            background-image: url('https://transparenttextures.com/patterns/wood-pattern.png');
+            color: #efebe9; display: flex; flex-direction: column; align-items: center; margin: 0; overflow: hidden; user-select: none;
+        }
+        .screen { 
+            display: flex; flex-direction: column; align-items: center; justify-content: center; min-height: 100vh; width: 100%; position: absolute; top: 0; left: 0;
+        }
+        .hidden { display: none !important; }
+        
+        .mode-box { 
+            background: var(--wood-dark); padding: 25px; border-radius: 12px; border: 8px double var(--wood-medium);
+            box-shadow: inset 0 0 50px rgba(0,0,0,0.5), 0 20px 40px rgba(0,0,0,0.8); text-align: center; min-width: 320px;
+        }
+        h1 { color: var(--wood-light); text-shadow: 3px 3px 0px #2a1b15; margin-bottom: 20px; font-size: 42px;}
+        
+        .btn { 
+            padding: 12px 24px; font-size: 16px; cursor: pointer; 
+            background: linear-gradient(to bottom, #a1887f, #5d4037);
+            border: 2px solid #3e2723; border-radius: 6px; color: white; font-weight: bold; margin: 8px; 
+            box-shadow: 0 4px 0 #2a1b15; transition: 0.1s;
+        }
+        .btn:active { transform: translateY(2px); box-shadow: 0 1px 0 #2a1b15; }
+
+        /* 木製迷路ねこDX用 */
+        canvas { 
+            background: #bcaaa4; background-image: url('https://transparenttextures.com/patterns/wood-pattern.png');
+            border: 10px solid #4e342e; border-radius: 4px; box-shadow: 0 10px 30px rgba(0,0,0,0.7);
+        }
+        .skin-grid { display: flex; gap: 10px; justify-content: center; margin: 15px 0; }
+        .skin-opt { 
+            width: 40px; height: 40px; border-radius: 8px; cursor: pointer; border: 3px solid transparent; transition: 0.2s; box-shadow: 0 4px 8px rgba(0,0,0,0.3);
+        }
+        .skin-opt.active { border-color: #fff; transform: scale(1.1); box-shadow: 0 0 15px var(--wood-light); }
+        .lv-btn { min-width: 45px; background: #795548; padding: 10px; }
+        #cat-status { font-size: 24px; margin: 10px; height: 35px; color: var(--wood-light); font-weight: bold; }
+
+        /* フラッシュ暗算用 */
+        #flash-display { font-size: 90px; height: 140px; line-height: 140px; color: var(--accent); text-shadow: 4px 4px 0 #000; font-weight: bold; }
+        input[type="number"] { font-size: 28px; padding: 10px; width: 180px; text-align: center; border-radius: 8px; border: none; margin: 15px; }
+
+        /* 記憶力タイル用 */
+        #memory-grid { display: grid; grid-template-columns: repeat(4, 1fr); gap: 12px; margin-top: 20px; }
+        .tile { 
+            width: 65px; height: 65px; background: var(--wood-medium); border-radius: 8px; cursor: pointer; border: 2px solid #2a1b15; transition: background 0.1s;
+        }
+        .tile.active { background: var(--accent) !important; box-shadow: 0 0 25px var(--accent); }
+    </style>
+</head>
+<body>
+
+    <div id="top-menu" class="screen">
+        <h1 style="font-size: 48px;">木製ゲームDX</h1>
+        <div class="mode-box">
+            <button class="btn" style="width: 280px;" onclick="showMenu('cat-menu')">木製迷路ねこDX</button><br>
+            <button class="btn" style="width: 280px;" onclick="showMenu('flash-container')">フラッシュ暗算</button><br>
+            <button class="btn" style="width: 280px;" onclick="showMenu('memory-container')">記憶力タイル</button>
+        </div>
+    </div>
+
+    <div id="cat-menu" class="screen hidden">
+        <h1>木製迷路ねこDX</h1>
+        <div class="mode-box">
+            <button class="btn" style="width: 100%;" onclick="c_startMode('practice')">特訓モード</button>
+            <div style="margin: 15px 0 5px; font-size: 14px;">キャラ（スキン）選択</div>
+            <div class="skin-grid" id="skinGrid"></div>
+            <div style="margin: 15px 0 5px; font-weight: bold;">AI対戦レベル</div>
+            <div id="levelGrid" style="display: grid; grid-template-columns: repeat(5, 1fr);"></div>
+            <button class="btn" style="margin-top:20px; width: 100%; opacity: 0.8;" onclick="showMenu('top-menu')">戻る</button>
+        </div>
+    </div>
+
+    <div id="cat-game-container" class="screen hidden">
+        <div id="cat-status">準備中...</div>
+        <div style="display: flex; gap: 20px;">
+            <div><canvas id="pCanvas" width="320" height="320"></canvas><div style="text-align:center;font-size:14px;margin-top:5px;font-weight:bold;">あなた</div></div>
+            <div id="ai-side"><canvas id="aCanvas" width="320" height="320"></canvas><div style="text-align:center;font-size:14px;margin-top:5px;font-weight:bold;">AI</div></div>
+        </div>
+        <div style="margin-top: 15px;">
+            <button class="btn" onclick="c_generateStage()">新盤面 (N)</button>
+            <button class="btn" onclick="c_resetCurrentStage()">リセット (R)</button>
+            <button class="btn" onclick="c_toggleHint()">ヒント (1)</button>
+            <button class="btn" onclick="showMenu('cat-menu')">戻る</button>
+        </div>
+    </div>
+
+    <div id="flash-container" class="screen hidden">
+        <h1>フラッシュ暗算</h1>
+        <div class="mode-box">
+            <div id="flash-setup">
+                <p>難易度を選択</p>
+                <button class="btn lv-btn" onclick="startFlash(1)">1</button>
+                <button class="btn lv-btn" onclick="startFlash(2)">2</button>
+                <button class="btn lv-btn" onclick="startFlash(3)">3</button>
+                <button class="btn lv-btn" onclick="startFlash(4)">4</button>
+                <button class="btn lv-btn" onclick="startFlash(5)">5</button>
+                <br><button class="btn" style="margin-top:20px; opacity:0.8;" onclick="showMenu('top-menu')">戻る</button>
+            </div>
+            <div id="flash-game" class="hidden">
+                <div id="flash-display"></div>
+                <div id="flash-answer-area" class="hidden">
+                    <input type="number" id="flash-input" placeholder="合計は？">
+                    <br><button class="btn" onclick="checkFlashAnswer()">回答する</button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div id="memory-container" class="screen hidden">
+        <h1>記憶力タイル</h1>
+        <div class="mode-box">
+            <div id="mem-status">レベルを選択して開始</div>
+            <div id="memory-grid"></div>
+            <div id="mem-setup" style="margin-top:20px;">
+                <button class="btn" onclick="startMemory(3)">初級</button>
+                <button class="btn" onclick="startMemory(5)">中級</button>
+                <button class="btn" onclick="startMemory(8)">上級</button>
+                <br><button class="btn" style="margin-top:20px; opacity:0.8;" onclick="showMenu('top-menu')">戻る</button>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        // --- 画面切り替え共通管理 ---
+        function showMenu(target) {
+            document.querySelectorAll('.screen').forEach(el => el.classList.add('hidden'));
+            clearInterval(c_timer); 
+            if(target === 'top-menu') document.getElementById('top-menu').classList.remove('hidden');
+            if(target === 'cat-menu') document.getElementById('cat-menu').classList.remove('hidden');
+            if(target === 'flash-container') {
+                document.getElementById('flash-container').classList.remove('hidden');
+                document.getElementById('flash-setup').classList.remove('hidden');
+                document.getElementById('flash-game').classList.add('hidden');
+            }
+            if(target === 'memory-container') {
+                document.getElementById('memory-container').classList.remove('hidden');
+                document.getElementById('mem-setup').classList.remove('hidden');
+                document.getElementById('mem-status').innerText = "レベルを選択して開始";
+            }
+        }
+
+        // ==========================================
+        // 木製迷路ねこDX ロジック
+        // ==========================================
+        const pCanvas = document.getElementById('pCanvas'), pCtx = pCanvas.getContext('2d');
+        const aCanvas = document.getElementById('aCanvas'), aCtx = aCanvas.getContext('2d');
+        const c_statusTxt = document.getElementById('cat-status');
+
+        const GRID_SIZE = 8, CELL_SIZE = 320 / GRID_SIZE;
+        let c_board = [], c_path = [], c_aiSolution = [], c_aiIdx = 1, c_target = 0;
+        let c_isOver = false, c_mode = '', c_timer = null, c_hints = false, c_speed = 500, c_lv = 0;
+
+        const c_skins = [
+            { name: "WOOD", body: "#ffcc80", head: "#ffe0b2", bg: "#5d4037" },
+            { name: "STONE", body: "#90a4ae", head: "#cfd8dc", bg: "#37474f" },
+            { name: "GEM", body: "#4fc3f7", head: "#b3e5fc", bg: "#0277bd" },
+            { name: "GOLD", body: "#fdd835", head: "#fff9c4", bg: "#f57f17" }
+        ];
+        let c_currentSkin = c_skins[0];
+
+        const sGrid = document.getElementById('skinGrid');
+        c_skins.forEach((s, i) => {
+            const div = document.createElement('div');
+            div.className = 'skin-opt' + (i===0?' active':'');
+            div.style.backgroundColor = s.body;
+            div.onclick = () => {
+                document.querySelectorAll('.skin-opt').forEach(el=>el.classList.remove('active'));
+                div.classList.add('active');
+                c_currentSkin = s;
+            };
+            sGrid.appendChild(div);
+        });
+
+        const lGrid = document.getElementById('levelGrid');
+        for(let i=1; i<=10; i++) {
+            const b = document.createElement('button');
+            b.className = 'btn lv-btn'; b.innerText = i;
+            b.onclick = () => c_startMode('battle', 1100 - (i*100), i);
+            lGrid.appendChild(b);
+        }
+
+        async function c_solve(g, sx, sy, t) {
+            const v = new Set([`${sx},${sy}`]), p = [{x:sx, y:sy}];
+            let step = 0;
+            async function bt(cx, cy, count) {
+                if (step++ > 2000) return false;
+                const ds = [[0,-1], [0,1], [-1,0], [1,0]].sort(() => Math.random()-0.5);
+                for (const [dx, dy] of ds) {
+                    let nx = cx+dx, ny = cy+dy, s = [];
+                    while (nx>=0 && nx<GRID_SIZE && ny>=0 && ny<GRID_SIZE && g[ny][nx]===0 && !v.has(`${nx},${ny}`)) {
+                        s.push({x:nx, y:ny}); v.add(`${nx},${ny}`); nx+=dx; ny+=dy;
+                    }
+                    if (s.length > 0) {
+                        p.push(...s);
+                        if (await bt(s[s.length-1].x, s[s.length-1].y, count+s.length)) return true;
+                        s.forEach(i => { v.delete(`${i.x},${i.y}`); p.pop(); });
+                    }
+                }
+                return count >= t;
+            }
+            return (await bt(sx, sy, 1)) ? [...p] : null;
+        }
+
+        async function c_generateStage() {
+            clearInterval(c_timer); c_isOver = true; c_statusTxt.innerText = "作成中...";
+            document.getElementById('ai-side').style.display = c_mode==='battle' ? 'block' : 'none';
+            while(true) {
+                let nb = Array.from({length:GRID_SIZE}, () => Array(GRID_SIZE).fill(0));
+                for(let i=0; i<12; i++) {
+                    let rx=Math.floor(Math.random()*GRID_SIZE), ry=Math.floor(Math.random()*GRID_SIZE);
+                    if(rx!==0 || ry!==0) nb[ry][rx] = 2;
+                }
+                const res = await c_solve(nb, 0, 0, 42);
+                if(res) {
+                    const s = new Set(res.map(i => `${i.x},${i.y}`));
+                    for(let y=0; y<GRID_SIZE; y++) for(let x=0; x<GRID_SIZE; x++) if(nb[y][x]===0 && !s.has(`${x},${y}`)) nb[y][x]=2;
+                    c_board = nb; c_aiSolution = res; c_target = res.length; break;
+                }
+                await new Promise(r => setTimeout(r, 0));
+            }
+            c_resetCurrentStage();
+        }
+
+        function c_resetCurrentStage() {
+            clearInterval(c_timer); c_path = [{x:0, y:0}]; c_aiIdx = 1; c_isOver = false; c_hints = false;
+            c_statusTxt.innerText = c_mode==='battle' ? `Lv.${c_lv} 開始！` : "特訓中";
+            c_render();
+            if(c_mode==='battle') c_timer = setInterval(c_aiMove, c_speed);
+        }
+
+        function c_aiMove() {
+            if(c_isOver) return;
+            if(c_aiIdx < c_aiSolution.length) {
+                let c=c_aiSolution[c_aiIdx-1], n=c_aiSolution[c_aiIdx], dx=n.x-c.x, dy=n.y-c.y;
+                while(c_aiIdx < c_aiSolution.length) {
+                    let p1=c_aiSolution[c_aiIdx-1], p2=c_aiSolution[c_aiIdx];
+                    if(p2.x-p1.x===dx && p2.y-p1.y===dy) c_aiIdx++; else break;
+                }
+                c_render();
+            }
+            if(c_aiIdx >= c_target) { c_isOver = true; c_statusTxt.innerText = "AIの勝利..."; }
+        }
+
+        function c_render() {
+            [pCtx, aCtx].forEach((ctx, id) => {
+                ctx.clearRect(0,0,320,320);
+                for(let y=0; y<GRID_SIZE; y++) for(let x=0; x<GRID_SIZE; x++) {
+                    ctx.strokeStyle = "rgba(0,0,0,0.1)"; ctx.strokeRect(x*CELL_SIZE, y*CELL_SIZE, CELL_SIZE, CELL_SIZE);
+                    if(c_board[y][x]===2) { ctx.fillStyle="#5d4037"; ctx.fillRect(x*CELL_SIZE+2, y*CELL_SIZE+2, CELL_SIZE-4, CELL_SIZE-4); }
+                }
+                if(id===0 && c_hints && c_mode==='practice') {
+                    c_aiSolution.forEach((p,i) => { ctx.fillStyle="rgba(0,0,0,0.3)"; ctx.font="10px serif"; ctx.fillText(i+1, p.x*CELL_SIZE+5, p.y*CELL_SIZE+15); });
+                }
+                const cur = id===0 ? c_path : c_aiSolution.slice(0, c_aiIdx);
+                const s = id===0 ? c_currentSkin : {body: "#3e2723", head: "#1a1a2e"};
+                cur.forEach((p, i) => {
+                    const isHead = i===cur.length-1;
+                    ctx.fillStyle = isHead ? s.head : s.body;
+                    ctx.beginPath(); ctx.roundRect(p.x*CELL_SIZE+4, p.y*CELL_SIZE+4, CELL_SIZE-8, CELL_SIZE-8, 4); ctx.fill();
+                    if(isHead) {
+                        ctx.fillStyle = id===0 ? "#000" : "#fff";
+                        ctx.beginPath(); ctx.arc(p.x*CELL_SIZE+CELL_SIZE*0.3, p.y*CELL_SIZE+CELL_SIZE*0.4, 2, 0, 7);
+                        ctx.arc(p.x*CELL_SIZE+CELL_SIZE*0.7, p.y*CELL_SIZE+CELL_SIZE*0.4, 2, 0, 7); ctx.fill();
+                    }
+                });
+            });
+        }
+
+        function c_move(dx, dy) {
+            if(c_isOver) return;
+            let nx = c_path[c_path.length-1].x+dx, ny = c_path[c_path.length-1].y+dy, m = false;
+            while(nx>=0 && nx<GRID_SIZE && ny>=0 && ny<GRID_SIZE && c_board[ny][nx]===0 && !c_path.some(p => p.x===nx && p.y===ny)) {
+                c_path.push({x:nx, y:ny}); nx+=dx; ny+=dy; m = true;
+            }
+            if(m) { c_render(); if(c_path.length===c_target) { c_isOver=true; clearInterval(c_timer); c_statusTxt.innerText="勝利！"; } }
+        }
+
+        function c_startMode(m, s, l) { 
+            c_mode=m; c_speed=s; c_lv=l; 
+            document.getElementById('cat-menu').classList.add('hidden'); 
+            document.getElementById('cat-game-container').classList.remove('hidden'); 
+            c_generateStage(); 
+        }
+
+        function c_toggleHint() { c_hints=!c_hints; c_render(); }
+
+        window.addEventListener('keydown', e => {
+            if(document.getElementById('cat-game-container').classList.contains('hidden')) return;
+            const k = e.key.toLowerCase();
+            if(k==='arrowup') c_move(0,-1); if(k==='arrowdown') c_move(0,1);
+            if(k==='arrowleft') c_move(-1,0); if(k==='arrowright') c_move(1,0);
+            if(k==='r') c_resetCurrentStage(); if(k==='n') c_generateStage(); if(k==='1') c_toggleHint();
+        });
+
+
+        // ==========================================
+        // フラッシュ暗算 ロジック
+        // ==========================================
+        let flashSum = 0;
+        function startFlash(lv) {
+            document.getElementById('flash-setup').classList.add('hidden');
+            document.getElementById('flash-game').classList.remove('hidden');
+            document.getElementById('flash-answer-area').classList.add('hidden');
+            const display = document.getElementById('flash-display');
+            const count = 3 + lv; 
+            const speed = 1000 - (lv * 100); 
+            const range = lv * 10;
+            
+            flashSum = 0;
+            let currentCount = 0;
+            display.innerText = "準備完了";
+            display.style.color = "var(--accent)";
+
+            setTimeout(() => {
+                const interval = setInterval(() => {
+                    if (currentCount < count) {
+                        let num = Math.floor(Math.random() * range) + 1;
+                        display.innerText = num;
+                        flashSum += num;
+                        currentCount++;
+                    } else {
+                        clearInterval(interval);
+                        display.innerText = "？";
+                        document.getElementById('flash-answer-area').classList.remove('hidden');
+                        document.getElementById('flash-input').value = "";
+                        document.getElementById('flash-input').focus();
+                    }
+                }, speed);
+            }, 1000);
+        }
+
+        function checkFlashAnswer() {
+            const ans = parseInt(document.getElementById('flash-input').value);
+            const display = document.getElementById('flash-display');
+            if (ans === flashSum) {
+                display.innerText = "大正解！";
+                display.style.color = "#4caf50";
+            } else {
+                display.innerText = "残念: " + flashSum;
+                display.style.color = "#f44336";
+            }
+            setTimeout(() => showMenu('flash-container'), 2000);
+        }
+
+        // ==========================================
+        // 記憶力タイル ロジック
+        // ==========================================
+        let memSequence = [], userSequence = [], isInputPhase = false;
+        const memGrid = document.getElementById('memory-grid');
+        for(let i=0; i<16; i++) {
+            const d = document.createElement('div');
+            d.className = 'tile';
+            d.onclick = () => handleTileClick(i);
+            memGrid.appendChild(d);
+        }
+        
+        function startMemory(len) {
+            document.getElementById('mem-setup').classList.add('hidden');
+            memSequence = []; userSequence = []; isInputPhase = false;
+            document.getElementById('mem-status').innerText = "記憶してください...";
+            for(let i=0; i<len; i++) memSequence.push(Math.floor(Math.random()*16));
+            showSequence();
+        }
+
+        async function showSequence() {
+            const tiles = document.querySelectorAll('.tile');
+            for(let idx of memSequence) {
+                await new Promise(r => setTimeout(r, 600));
+                tiles[idx].classList.add('active');
+                await new Promise(r => setTimeout(r, 400));
+                tiles[idx].classList.remove('active');
+            }
+            isInputPhase = true;
+            document.getElementById('mem-status').innerText = "順番にタップ！";
+        }
+
+        function handleTileClick(i) {
+            if(!isInputPhase) return;
+            const tiles = document.querySelectorAll('.tile');
+            tiles[i].classList.add('active');
+            setTimeout(() => tiles[i].classList.remove('active'), 200);
+            userSequence.push(i);
+            
+            if(userSequence[userSequence.length-1] !== memSequence[userSequence.length-1]) {
+                document.getElementById('mem-status').innerText = "失敗...";
+                isInputPhase = false;
+                setTimeout(() => showMenu('memory-container'), 1500);
+            } else if(userSequence.length === memSequence.length) {
+                document.getElementById('mem-status').innerText = "完璧！クリア！";
+                isInputPhase = false;
+                setTimeout(() => showMenu('memory-container'), 1500);
+            }
+        }
+    </script>
+</body>
+</html>
