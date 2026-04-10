@@ -2,7 +2,7 @@
 <html lang="ja">
 <head>
     <meta charset="UTF-8">
-    <title>木製ゲームDX - アルティメット完全版</title>
+    <title>木製ゲームDX</title>
     <style>
         :root {
             --wood-dark: #5d4037; --wood-medium: #8d6e63; --wood-light: #d7ccc8; --bg: #3e2723; --accent: #fdd835;
@@ -99,14 +99,13 @@
             <div><canvas id="pCanvas" width="320" height="320"></canvas><div style="text-align:center;font-size:14px;margin-top:5px;font-weight:bold;">あなた</div></div>
             <div id="ai-side"><canvas id="aCanvas" width="320" height="320"></canvas><div id="opp-label" style="text-align:center;font-size:14px;margin-top:5px;font-weight:bold;">AI</div></div>
         </div>
-        <div id="offline-controls" style="margin-top: 15px;">
-            <button class="btn" onclick="c_generateStage()">新盤面 (N)</button>
-            <button class="btn" onclick="c_resetCurrentStage()">リセット (R)</button>
-            <button class="btn" onclick="c_toggleHint()">ヒント (1)</button>
-            <button class="btn" onclick="showMenu('cat-menu')">戻る</button>
-        </div>
-        <div id="online-controls" class="hidden" style="margin-top: 15px;">
-            <button class="btn" style="background: #d32f2f;" onclick="location.reload()">対戦をやめる</button>
+        <!-- ボタン群 -->
+        <div id="game-controls" style="margin-top: 15px;">
+            <button id="btn-new" class="btn" onclick="c_generateStage()">新盤面 (N)</button>
+            <button id="btn-reset" class="btn" onclick="c_resetCurrentStage()">リセット (R)</button>
+            <button id="btn-hint" class="btn" onclick="c_toggleHint()">ヒント (1)</button>
+            <button id="btn-back" class="btn" onclick="showMenu('cat-menu')">戻る</button>
+            <button id="btn-quit" class="btn hidden" style="background: #d32f2f;" onclick="location.reload()">対戦をやめる</button>
         </div>
     </div>
 
@@ -166,8 +165,7 @@
         const audioCtx = new (window.AudioContext || window.webkitAudioContext)();
         function playSound(type) {
             if (audioCtx.state === 'suspended') audioCtx.resume();
-            const osc = audioCtx.createOscillator();
-            const gainNode = audioCtx.createGain();
+            const osc = audioCtx.createOscillator(); const gainNode = audioCtx.createGain();
             osc.connect(gainNode); gainNode.connect(audioCtx.destination);
             const now = audioCtx.currentTime;
 
@@ -211,7 +209,7 @@
         };
 
         // ==========================================
-        // 木製迷路ねこDX ロジック (オフライン ＆ オンライン統合)
+        // 木製迷路ねこDX ロジック (オフライン ＆ オンライン)
         // ==========================================
         const pCanvas = document.getElementById('pCanvas'), pCtx = pCanvas.getContext('2d');
         const aCanvas = document.getElementById('aCanvas'), aCtx = aCanvas.getContext('2d');
@@ -221,12 +219,7 @@
         let c_board = [], c_path = [], c_aiSolution = [], c_aiIdx = 1, c_target = 0;
         let c_isOver = false, c_mode = '', c_timer = null, c_hints = false, c_speed = 500, c_lv = 0;
 
-        const c_skins = [
-            { name: "WOOD", body: "#ffcc80", head: "#ffe0b2", bg: "#5d4037" },
-            { name: "STONE", body: "#90a4ae", head: "#cfd8dc", bg: "#37474f" },
-            { name: "GEM", body: "#4fc3f7", head: "#b3e5fc", bg: "#0277bd" },
-            { name: "GOLD", body: "#fdd835", head: "#fff9c4", bg: "#f57f17" }
-        ];
+        const c_skins = [{ name: "WOOD", body: "#ffcc80", head: "#ffe0b2", bg: "#5d4037" }, { name: "STONE", body: "#90a4ae", head: "#cfd8dc", bg: "#37474f" }, { name: "GEM", body: "#4fc3f7", head: "#b3e5fc", bg: "#0277bd" }, { name: "GOLD", body: "#fdd835", head: "#fff9c4", bg: "#f57f17" }];
         let c_currentSkin = c_skins[0];
 
         const sGrid = document.getElementById('skinGrid');
@@ -285,19 +278,45 @@
         }
 
         window.c_generateStage = async function() {
+            // ホスト・オフライン以外は弾く
+            if (c_mode === 'online' && onMyRole !== 'p1') return; 
             playSound('click');
             clearInterval(c_timer); c_isOver = true; c_statusTxt.innerText = "作成中...";
+            
             const data = await getNewStageData();
             c_board = data.board; c_aiSolution = data.solution; c_target = data.target;
-            window.c_resetCurrentStage();
+            
+            if (c_mode === 'online') {
+                // Firebaseを上書きし、リスナーで両者同時に開始させる
+                await set(ref(db, `rooms/${onRoomId}`), { 
+                    board: JSON.stringify(c_board), 
+                    solution: JSON.stringify(c_aiSolution), // ヒント共有用
+                    target: c_target,
+                    p1: JSON.stringify([{x:0, y:0}]), 
+                    p2: JSON.stringify([{x:0, y:0}]), 
+                    status: "playing" 
+                });
+            } else {
+                window.c_resetCurrentStage();
+            }
         };
 
         window.c_resetCurrentStage = function() {
+            if (c_mode === 'online' && onMyRole !== 'p1') return;
             playSound('click');
-            clearInterval(c_timer); c_path = [{x:0, y:0}]; c_aiIdx = 1; c_isOver = false; c_hints = false;
-            c_statusTxt.innerText = c_mode==='battle' ? `Lv.${c_lv} 開始！` : "特訓中";
-            c_render();
-            if(c_mode==='battle') c_timer = setInterval(c_aiMove, c_speed);
+            
+            if (c_mode === 'online') {
+                // サーバー側の状態を初期化（リスナーが検知して両者の画面をリセット）
+                set(ref(db, `rooms/${onRoomId}/p1`), JSON.stringify([{x:0, y:0}]));
+                set(ref(db, `rooms/${onRoomId}/p2`), JSON.stringify([{x:0, y:0}]));
+                set(ref(db, `rooms/${onRoomId}/winner`), null);
+                set(ref(db, `rooms/${onRoomId}/status`), "playing");
+            } else {
+                clearInterval(c_timer); c_path = [{x:0, y:0}]; c_aiIdx = 1; c_isOver = false; c_hints = false;
+                c_statusTxt.innerText = c_mode==='battle' ? `Lv.${c_lv} 開始！` : "特訓中";
+                c_render();
+                if(c_mode==='battle') c_timer = setInterval(c_aiMove, c_speed);
+            }
         };
 
         function c_aiMove() {
@@ -320,9 +339,15 @@
                     ctx.strokeStyle = "rgba(0,0,0,0.1)"; ctx.strokeRect(x*CELL_SIZE, y*CELL_SIZE, CELL_SIZE, CELL_SIZE);
                     if(c_board[y][x]===2) { ctx.fillStyle="#5d4037"; ctx.fillRect(x*CELL_SIZE+2, y*CELL_SIZE+2, CELL_SIZE-4, CELL_SIZE-4); }
                 }
-                if(id===0 && c_hints && c_mode==='practice') {
-                    c_aiSolution.forEach((p,i) => { ctx.fillStyle="rgba(0,0,0,0.3)"; ctx.font="10px serif"; ctx.fillText(i+1, p.x*CELL_SIZE+5, p.y*CELL_SIZE+15); });
+                
+                // ヒント表示（オンライン・オフライン問わず、自分の画面(id===0)に表示）
+                if(id===0 && c_hints && c_aiSolution && c_aiSolution.length > 0) {
+                    c_aiSolution.forEach((p,i) => { 
+                        ctx.fillStyle="rgba(0,0,0,0.3)"; ctx.font="10px serif"; 
+                        ctx.fillText(i+1, p.x*CELL_SIZE+5, p.y*CELL_SIZE+15); 
+                    });
                 }
+
                 let cur;
                 if(id === 0) cur = c_path;
                 else cur = (c_mode === 'online') ? onOppPath : c_aiSolution.slice(0, c_aiIdx);
@@ -367,8 +392,11 @@
             document.getElementById('cat-game-container').classList.remove('hidden'); 
 
             document.getElementById('onCat-room-info').classList.add('hidden');
-            document.getElementById('offline-controls').classList.remove('hidden');
-            document.getElementById('online-controls').classList.add('hidden');
+            document.getElementById('btn-new').classList.remove('hidden');
+            document.getElementById('btn-reset').classList.remove('hidden');
+            document.getElementById('btn-back').classList.remove('hidden');
+            document.getElementById('btn-quit').classList.add('hidden');
+            
             document.getElementById('opp-label').innerText = "AI";
             document.getElementById('ai-side').style.display = m==='battle' ? 'block' : 'none';
 
@@ -382,9 +410,13 @@
             const k = e.key.toLowerCase();
             if(k==='arrowup') { c_move(0,-1); e.preventDefault(); } if(k==='arrowdown') { c_move(0,1); e.preventDefault(); }
             if(k==='arrowleft') { c_move(-1,0); e.preventDefault(); } if(k==='arrowright') { c_move(1,0); e.preventDefault(); }
-            if(c_mode !== 'online') {
-                if(k==='r') window.c_resetCurrentStage(); if(k==='n') window.c_generateStage(); if(k==='1') window.c_toggleHint();
+            
+            // キーボードショートカット (ホスト・オフライン専用機能)
+            if(c_mode !== 'online' || onMyRole === 'p1') {
+                if(k==='r') window.c_resetCurrentStage(); 
+                if(k==='n') window.c_generateStage(); 
             }
+            if(k==='1') window.c_toggleHint();
         });
 
 
@@ -403,8 +435,13 @@
             
             document.getElementById('onCat-room-info').innerText = "🔑 合言葉: " + onRoomId;
             document.getElementById('onCat-room-info').classList.remove('hidden');
-            document.getElementById('offline-controls').classList.add('hidden');
-            document.getElementById('online-controls').classList.remove('hidden');
+            
+            // ホストなので新盤面・リセットボタンは表示
+            document.getElementById('btn-new').classList.remove('hidden');
+            document.getElementById('btn-reset').classList.remove('hidden');
+            document.getElementById('btn-back').classList.add('hidden');
+            document.getElementById('btn-quit').classList.remove('hidden');
+
             document.getElementById('opp-label').innerText = "あいて";
             document.getElementById('ai-side').style.display = 'block';
             
@@ -413,10 +450,11 @@
             onOppPath = [{x:0, y:0}]; c_path = [{x:0, y:0}];
             
             const data = await getNewStageData();
-            c_board = data.board; c_target = data.target;
+            c_board = data.board; c_target = data.target; c_aiSolution = data.solution;
             
             await set(ref(db, `rooms/${onRoomId}`), { 
                 board: JSON.stringify(c_board), 
+                solution: JSON.stringify(c_aiSolution),
                 target: c_target,
                 p1: JSON.stringify([{x:0, y:0}]), 
                 status: "waiting" 
@@ -437,8 +475,13 @@
             
             document.getElementById('onCat-room-info').innerText = "🔑 合言葉: " + onRoomId;
             document.getElementById('onCat-room-info').classList.remove('hidden');
-            document.getElementById('offline-controls').classList.add('hidden');
-            document.getElementById('online-controls').classList.remove('hidden');
+            
+            // ゲストなので新盤面・リセットボタンは隠す
+            document.getElementById('btn-new').classList.add('hidden');
+            document.getElementById('btn-reset').classList.add('hidden');
+            document.getElementById('btn-back').classList.add('hidden');
+            document.getElementById('btn-quit').classList.remove('hidden');
+
             document.getElementById('opp-label').innerText = "あいて";
             document.getElementById('ai-side').style.display = 'block';
 
@@ -457,24 +500,47 @@
                 const data = snap.val();
                 if(!data) { c_statusTxt.innerText = "相手が切断しました"; c_isOver = true; return; }
                 
-                if(data.board && c_board.length === 0) { c_board = JSON.parse(data.board); c_target = data.target; }
+                // 盤面の取得
+                if(data.board) { 
+                    c_board = JSON.parse(data.board); 
+                    c_target = data.target; 
+                    if(data.solution) c_aiSolution = JSON.parse(data.solution); 
+                }
                 
-                if(data.status === "playing" && c_isOver && !data.winner) {
-                    c_isOver = false; c_statusTxt.innerText = "🔥 対戦中！すべて塗りつぶせ！"; playSound('win');
+                // パスの同期とリセット検知
+                const myPathStr = data[onMyRole];
+                const oppRole = onMyRole === "p1" ? "p2" : "p1";
+                const oppPathStr = data[oppRole];
+
+                if(oppPathStr) onOppPath = JSON.parse(oppPathStr);
+
+                if(myPathStr) {
+                    const parsedMyPath = JSON.parse(myPathStr);
+                    // サーバー側でパスがリセットされたことを検知
+                    if(parsedMyPath.length === 1 && parsedMyPath[0].x === 0 && parsedMyPath[0].y === 0) {
+                        if(c_path.length > 1 || c_isOver) { // すでに動いているか終わっている場合のみリセット処理
+                            c_path = [{x:0, y:0}];
+                            c_isOver = false;
+                            c_hints = false; // ヒントも一旦オフ
+                            c_statusTxt.innerText = "🔥 対戦中！すべて塗りつぶせ！"; 
+                        }
+                    }
                 }
 
-                const oppRole = onMyRole === "p1" ? "p2" : "p1";
-                if(data[oppRole]) onOppPath = JSON.parse(data[oppRole]);
-                
+                // 勝敗判定
                 if(data.winner && !c_isOver) {
                     c_isOver = true;
                     if(data.winner === onMyRole) { c_statusTxt.innerText = "🎉 あなたの勝利！"; playSound('win'); }
                     else { c_statusTxt.innerText = "💀 相手の勝利..."; playSound('lose'); }
+                } else if (!data.winner && data.status === "playing" && c_path.length === 1) {
+                    // 両者待機完了で対戦開始
+                    c_isOver = false;
+                    c_statusTxt.innerText = "🔥 対戦中！すべて塗りつぶせ！"; 
                 }
+
                 c_render();
             });
         }
-
 
         // ==========================================
         // フラッシュ暗算 ロジック
