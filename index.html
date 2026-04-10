@@ -2,404 +2,507 @@
 <html lang="ja">
 <head>
     <meta charset="UTF-8">
-    <title>木製ゲームDX - 完全版</title>
+    <title>木製ゲームDX - アルティメット完全版</title>
     <style>
+        @import url('https://fonts.googleapis.com/css2?family=M+PLUS+Rounded+1c:wght@700&display=swap');
         :root {
-            --wood-dark: #5d4037; --wood-medium: #8d6e63; --wood-light: #d7ccc8; --bg: #3e2723; --accent: #fdd835;
+            --wood-dark: #4e342e; --wood-medium: #795548; --wood-light: #d7ccc8; 
+            --bg: #2a1b15; --accent: #ffd54f; --danger: #ef5350; --success: #66bb6a;
         }
         body {
-            font-family: 'Hiragino Mincho ProN', 'Yu Mincho', serif; background: var(--bg);
-            background-image: url('https://transparenttextures.com/patterns/wood-pattern.png');
+            font-family: 'M PLUS Rounded 1c', sans-serif; background: var(--bg);
+            background-image: radial-gradient(circle, #4e342e 10%, transparent 10%), radial-gradient(circle, #4e342e 10%, transparent 10%);
+            background-size: 20px 20px; background-position: 0 0, 10px 10px;
             color: #efebe9; display: flex; flex-direction: column; align-items: center; margin: 0; overflow: hidden; user-select: none;
         }
-        .screen { 
+        .screen {
             display: flex; flex-direction: column; align-items: center; justify-content: center; min-height: 100vh; width: 100%; position: absolute; top: 0; left: 0;
+            transition: opacity 0.3s ease, transform 0.3s ease; opacity: 1; transform: scale(1);
         }
-        .hidden { display: none !important; }
+        .hidden { opacity: 0; transform: scale(0.95) translateY(20px); pointer-events: none; z-index: -1; }
         
-        .mode-box { 
-            background: var(--wood-dark); padding: 25px; border-radius: 12px; border: 8px double var(--wood-medium);
-            box-shadow: inset 0 0 50px rgba(0,0,0,0.5), 0 20px 40px rgba(0,0,0,0.8); text-align: center; min-width: 320px;
+        .mode-box {
+            background: linear-gradient(135deg, var(--wood-medium), var(--wood-dark));
+            padding: 30px; border-radius: 16px; border: 6px solid #3e2723;
+            box-shadow: inset 0 0 20px rgba(0,0,0,0.5), 0 15px 35px rgba(0,0,0,0.8); text-align: center; min-width: 360px;
         }
-        h1 { color: var(--wood-light); text-shadow: 3px 3px 0px #2a1b15; margin-bottom: 20px; font-size: 42px;}
+        h1 { color: var(--accent); text-shadow: 0 4px 10px rgba(0,0,0,0.8), 0 2px 2px #000; margin-bottom: 25px; font-size: 52px; letter-spacing: 2px;}
+        h2 { color: var(--wood-light); font-size: 28px; margin-bottom: 20px; text-shadow: 2px 2px 4px #000; }
         
-        .btn { 
-            padding: 12px 24px; font-size: 16px; cursor: pointer; 
-            background: linear-gradient(to bottom, #a1887f, #5d4037);
-            border: 2px solid #3e2723; border-radius: 6px; color: white; font-weight: bold; margin: 8px; 
-            box-shadow: 0 4px 0 #2a1b15; transition: 0.1s;
+        .btn {
+            padding: 15px 30px; font-size: 18px; cursor: pointer; display: block; width: calc(100% - 20px); box-sizing: border-box;
+            background: linear-gradient(to bottom, #a1887f, #6d4c41); border: 2px solid #3e2723; border-radius: 8px; 
+            color: white; font-weight: bold; margin: 10px auto; box-shadow: 0 6px 0 #2a1b15, 0 10px 15px rgba(0,0,0,0.4); 
+            transition: all 0.1s; font-family: 'M PLUS Rounded 1c', sans-serif;
         }
-        .btn:active { transform: translateY(2px); box-shadow: 0 1px 0 #2a1b15; }
+        .btn:hover { filter: brightness(1.1); transform: translateY(2px); box-shadow: 0 4px 0 #2a1b15, 0 5px 10px rgba(0,0,0,0.4); }
+        .btn:active { transform: translateY(6px); box-shadow: 0 0 0 #2a1b15, inset 0 3px 5px rgba(0,0,0,0.5); }
+        .btn-green { background: linear-gradient(to bottom, #81c784, #388e3c); }
+        .btn-blue { background: linear-gradient(to bottom, #64b5f6, #1976d2); }
 
-        /* 木製迷路ねこDX用 */
-        canvas { 
-            background: #bcaaa4; background-image: url('https://transparenttextures.com/patterns/wood-pattern.png');
-            border: 10px solid #4e342e; border-radius: 4px; box-shadow: 0 10px 30px rgba(0,0,0,0.7);
+        /* キャンバス（迷路） */
+        canvas {
+            background: #bcaaa4; border: 8px solid #3e2723; border-radius: 8px; box-shadow: 0 10px 30px rgba(0,0,0,0.7);
         }
-        .skin-grid { display: flex; gap: 10px; justify-content: center; margin: 15px 0; }
-        .skin-opt { 
-            width: 40px; height: 40px; border-radius: 8px; cursor: pointer; border: 3px solid transparent; transition: 0.2s; box-shadow: 0 4px 8px rgba(0,0,0,0.3);
-        }
-        .skin-opt.active { border-color: #fff; transform: scale(1.1); box-shadow: 0 0 15px var(--wood-light); }
-        .lv-btn { min-width: 45px; background: #795548; padding: 10px; }
-        #cat-status { font-size: 24px; margin: 10px; height: 35px; color: var(--wood-light); font-weight: bold; }
+        .canvas-container { display: flex; gap: 30px; margin-top: 10px; }
+        .player-label { text-align: center; font-size: 18px; margin-top: 8px; font-weight: bold; text-shadow: 1px 1px 2px #000; }
+        
+        /* フラッシュ & 記憶力 */
+        #flash-display { font-size: 110px; height: 150px; line-height: 150px; color: var(--accent); text-shadow: 5px 5px 0 #000, 0 0 30px var(--accent); font-weight: bold; }
+        input { font-size: 24px; padding: 12px; width: 220px; text-align: center; border-radius: 8px; border: 4px solid var(--wood-medium); margin: 15px; background: #efebe9; font-family: 'M PLUS Rounded 1c', sans-serif; font-weight: bold;}
+        input:focus { outline: none; border-color: var(--accent); box-shadow: 0 0 15px var(--accent); }
+        
+        #memory-grid { display: grid; grid-template-columns: repeat(4, 1fr); gap: 15px; margin-top: 20px; }
+        .tile { width: 70px; height: 70px; background: #6d4c41; border-radius: 12px; cursor: pointer; border: 3px solid #2a1b15; box-shadow: 0 6px 0 #3e2723; transition: all 0.1s; }
+        .tile:active { transform: translateY(6px); box-shadow: 0 0 0 #3e2723; }
+        .tile.active { background: var(--accent) !important; box-shadow: 0 0 30px var(--accent), inset 0 0 15px #fff; border-color: #fff; transform: scale(1.05); }
 
-        /* フラッシュ暗算用 */
-        #flash-display { font-size: 90px; height: 140px; line-height: 140px; color: var(--accent); text-shadow: 4px 4px 0 #000; font-weight: bold; }
-        input[type="number"] { font-size: 28px; padding: 10px; width: 180px; text-align: center; border-radius: 8px; border: none; margin: 15px; }
-
-        /* 記憶力タイル用 */
-        #memory-grid { display: grid; grid-template-columns: repeat(4, 1fr); gap: 12px; margin-top: 20px; }
-        .tile { 
-            width: 65px; height: 65px; background: var(--wood-medium); border-radius: 8px; cursor: pointer; border: 2px solid #2a1b15; transition: background 0.1s;
-        }
-        .tile.active { background: var(--accent) !important; box-shadow: 0 0 25px var(--accent); }
+        /* ステータステキスト */
+        .status-txt { font-size: 26px; margin: 10px; height: 40px; color: #fff; font-weight: bold; text-shadow: 2px 2px 4px #000; animation: pulse 2s infinite; }
+        @keyframes pulse { 0% { opacity: 0.8; } 50% { opacity: 1; text-shadow: 0 0 15px var(--accent); } 100% { opacity: 0.8; } }
     </style>
 </head>
 <body>
 
     <div id="top-menu" class="screen">
-        <h1 style="font-size: 48px;">木製ゲームDX</h1>
+        <h1>木製ゲームDX</h1>
         <div class="mode-box">
-            <button class="btn" style="width: 280px;" onclick="showMenu('cat-menu')">木製迷路ねこDX</button><br>
-            <button class="btn" style="width: 280px;" onclick="showMenu('flash-container')">フラッシュ暗算</button><br>
-            <button class="btn" style="width: 280px;" onclick="showMenu('memory-container')">記憶力タイル</button>
+            <button class="btn btn-blue" onclick="showScreen('online-menu')">🌐 オンライン迷路対戦</button>
+            <button class="btn" onclick="showScreen('cat-offline-menu')">🤖 AI迷路対戦</button>
+            <button class="btn" onclick="showScreen('flash-menu')">⚡ フラッシュ暗算</button>
+            <button class="btn" onclick="showScreen('memory-menu')">🧠 記憶力タイル</button>
         </div>
     </div>
 
-    <div id="cat-menu" class="screen hidden">
-        <h1>木製迷路ねこDX</h1>
+    <div id="online-menu" class="screen hidden">
+        <h2>🌐 オンライン迷路対戦</h2>
         <div class="mode-box">
-            <button class="btn" style="width: 100%;" onclick="c_startMode('practice')">特訓モード</button>
-            <div style="margin: 15px 0 5px; font-size: 14px;">キャラ（スキン）選択</div>
-            <div class="skin-grid" id="skinGrid"></div>
-            <div style="margin: 15px 0 5px; font-weight: bold;">AI対戦レベル</div>
-            <div id="levelGrid" style="display: grid; grid-template-columns: repeat(5, 1fr);"></div>
-            <button class="btn" style="margin-top:20px; width: 100%; opacity: 0.8;" onclick="showMenu('top-menu')">戻る</button>
+            <button class="btn btn-green" onclick="onCat_createRoom()">部屋を作る (ホスト)</button>
+            <div style="margin: 20px 0; font-weight: bold;">または</div>
+            <input type="text" id="join-room-id" placeholder="合言葉を入力" autocomplete="off">
+            <button class="btn btn-blue" onclick="onCat_joinRoom()">部屋に入る (ゲスト)</button>
+            <button class="btn" style="margin-top:25px; opacity: 0.8; background: #795548;" onclick="showScreen('top-menu')">◀ メニューに戻る</button>
         </div>
     </div>
 
-    <div id="cat-game-container" class="screen hidden">
-        <div id="cat-status">準備中...</div>
-        <div style="display: flex; gap: 20px;">
-            <div><canvas id="pCanvas" width="320" height="320"></canvas><div style="text-align:center;font-size:14px;margin-top:5px;font-weight:bold;">あなた</div></div>
-            <div id="ai-side"><canvas id="aCanvas" width="320" height="320"></canvas><div style="text-align:center;font-size:14px;margin-top:5px;font-weight:bold;">AI</div></div>
+    <div id="online-game" class="screen hidden">
+        <div id="onCat-status" class="status-txt">接続中...</div>
+        <div id="onCat-room-info" style="font-size: 20px; color: var(--accent); font-weight: bold; margin-bottom: 15px;"></div>
+        <div class="canvas-container">
+            <div><canvas id="onCat-pCanvas" width="320" height="320"></canvas><div class="player-label" style="color:var(--accent)">あなた</div></div>
+            <div><canvas id="onCat-aCanvas" width="320" height="320"></canvas><div class="player-label">あいて</div></div>
         </div>
-        <div style="margin-top: 15px;">
-            <button class="btn" onclick="c_generateStage()">新盤面 (N)</button>
-            <button class="btn" onclick="c_resetCurrentStage()">リセット (R)</button>
-            <button class="btn" onclick="c_toggleHint()">ヒント (1)</button>
-            <button class="btn" onclick="showMenu('cat-menu')">戻る</button>
+        <button class="btn" style="margin-top: 30px; width: 250px; background: #d32f2f;" onclick="location.reload()">対戦をやめる</button>
+    </div>
+
+    <div id="cat-offline-menu" class="screen hidden">
+        <h2>🤖 AI迷路対戦</h2>
+        <div class="mode-box">
+            <button class="btn btn-green" onclick="offCat_start(900)">初級 (ゆっくり)</button>
+            <button class="btn btn-blue" onclick="offCat_start(600)">中級 (ふつう)</button>
+            <button class="btn" style="background: linear-gradient(to bottom, #e53935, #b71c1c);" onclick="offCat_start(300)">上級 (激ムズ)</button>
+            <button class="btn" style="margin-top:25px; opacity: 0.8; background: #795548;" onclick="showScreen('top-menu')">◀ メニューに戻る</button>
         </div>
     </div>
 
-    <div id="flash-container" class="screen hidden">
-        <h1>フラッシュ暗算</h1>
+    <div id="cat-offline-game" class="screen hidden">
+        <div id="offCat-status" class="status-txt">準備完了</div>
+        <div class="canvas-container">
+            <div><canvas id="offCat-pCanvas" width="320" height="320"></canvas><div class="player-label" style="color:var(--accent)">あなた</div></div>
+            <div><canvas id="offCat-aCanvas" width="320" height="320"></canvas><div class="player-label">AIねこ</div></div>
+        </div>
+        <div style="margin-top: 25px; display: flex; gap: 10px;">
+            <button class="btn" style="width: 150px;" onclick="offCat_generate()">🔄 次のステージ</button>
+            <button class="btn" style="width: 150px; opacity: 0.8; background: #795548;" onclick="showScreen('cat-offline-menu')">◀ 戻る</button>
+        </div>
+    </div>
+
+    <div id="flash-menu" class="screen hidden">
+        <h2>⚡ フラッシュ暗算</h2>
         <div class="mode-box">
-            <div id="flash-setup">
-                <p>難易度を選択</p>
-                <button class="btn lv-btn" onclick="startFlash(1)">1</button>
-                <button class="btn lv-btn" onclick="startFlash(2)">2</button>
-                <button class="btn lv-btn" onclick="startFlash(3)">3</button>
-                <button class="btn lv-btn" onclick="startFlash(4)">4</button>
-                <button class="btn lv-btn" onclick="startFlash(5)">5</button>
-                <br><button class="btn" style="margin-top:20px; opacity:0.8;" onclick="showMenu('top-menu')">戻る</button>
+            <button class="btn" onclick="startFlash(1)">レベル 1 (かんたん)</button>
+            <button class="btn" onclick="startFlash(3)">レベル 3 (ふつう)</button>
+            <button class="btn" onclick="startFlash(5)">レベル 5 (むずかしい)</button>
+            <button class="btn" style="margin-top:25px; opacity: 0.8; background: #795548;" onclick="showScreen('top-menu')">◀ メニューに戻る</button>
+        </div>
+    </div>
+
+    <div id="flash-game" class="screen hidden">
+        <div class="mode-box" style="padding: 50px;">
+            <div id="flash-display">準備...</div>
+            <div id="flash-answer-area" class="hidden">
+                <input type="number" id="flash-input" placeholder="合計は？">
+                <button class="btn btn-green" onclick="checkFlashAnswer()">決定</button>
             </div>
-            <div id="flash-game" class="hidden">
-                <div id="flash-display"></div>
-                <div id="flash-answer-area" class="hidden">
-                    <input type="number" id="flash-input" placeholder="合計は？">
-                    <br><button class="btn" onclick="checkFlashAnswer()">回答する</button>
-                </div>
-            </div>
+            <button class="btn" style="margin-top:40px; opacity: 0.8; background: #795548;" onclick="showScreen('flash-menu')">◀ やめる</button>
         </div>
     </div>
 
-    <div id="memory-container" class="screen hidden">
-        <h1>記憶力タイル</h1>
+    <div id="memory-menu" class="screen hidden">
+        <h2>🧠 記憶力タイル</h2>
         <div class="mode-box">
-            <div id="mem-status">レベルを選択して開始</div>
+            <div id="mem-status" class="status-txt" style="margin-bottom: 20px;">レベルを選択</div>
             <div id="memory-grid"></div>
-            <div id="mem-setup" style="margin-top:20px;">
-                <button class="btn" onclick="startMemory(3)">初級</button>
-                <button class="btn" onclick="startMemory(5)">中級</button>
-                <button class="btn" onclick="startMemory(8)">上級</button>
-                <br><button class="btn" style="margin-top:20px; opacity:0.8;" onclick="showMenu('top-menu')">戻る</button>
+            <div id="mem-setup" style="margin-top:25px;">
+                <button class="btn" onclick="startMemory(4)">初級 (4つ)</button>
+                <button class="btn" onclick="startMemory(6)">中級 (6つ)</button>
+                <button class="btn" onclick="startMemory(9)">上級 (9つ)</button>
+                <button class="btn" style="margin-top:25px; opacity: 0.8; background: #795548;" onclick="showScreen('top-menu')">◀ メニューに戻る</button>
             </div>
         </div>
     </div>
 
-    <script>
-        // --- 画面切り替え共通管理 ---
-        function showMenu(target) {
+    <script type="module">
+        // --- Firebase SDK 読み込み ---
+        import { initializeApp } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-app.js";
+        import { getDatabase, ref, set, onValue, onDisconnect } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-database.js";
+
+        // 宇治さんの設定コード
+        const firebaseConfig = {
+            apiKey: "AIzaSyC0Kcn330WSPc9COXDtKaRwwjiL8SbzDVI",
+            authDomain: "wooden-games-fc1ce.firebaseapp.com",
+            projectId: "wooden-games-fc1ce",
+            storageBucket: "wooden-games-fc1ce.firebasestorage.app",
+            messagingSenderId: "55529711793",
+            appId: "1:55529711793:web:e1cff88c0b0051c0ab1a90",
+            databaseURL: "https://wooden-games-fc1ce-default-rtdb.firebaseio.com"
+        };
+        const app = initializeApp(firebaseConfig);
+        const db = getDatabase(app);
+
+        // --- グローバル変数・システム ---
+        let activeGame = null; // 現在遊んでいるゲーム('onlineCat', 'offlineCat', 'flash', 'memory')
+        const GRID_SIZE = 8, CELL_SIZE = 40;
+
+        // --- 🎵 サウンドエンジン (Web Audio API) ---
+        const audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+        window.playSound = (type) => {
+            if (audioCtx.state === 'suspended') audioCtx.resume();
+            const osc = audioCtx.createOscillator();
+            const gainNode = audioCtx.createGain();
+            osc.connect(gainNode);
+            gainNode.connect(audioCtx.destination);
+            const now = audioCtx.currentTime;
+
+            if (type === 'move') {
+                osc.type = 'sine'; osc.frequency.setValueAtTime(400, now); osc.frequency.exponentialRampToValueAtTime(600, now + 0.05);
+                gainNode.gain.setValueAtTime(0.1, now); gainNode.gain.exponentialRampToValueAtTime(0.01, now + 0.1);
+                osc.start(now); osc.stop(now + 0.1);
+            } else if (type === 'win') {
+                osc.type = 'triangle'; osc.frequency.setValueAtTime(440, now); osc.frequency.setValueAtTime(554, now+0.1); osc.frequency.setValueAtTime(659, now+0.2); osc.frequency.setValueAtTime(880, now+0.3);
+                gainNode.gain.setValueAtTime(0.2, now); gainNode.gain.linearRampToValueAtTime(0, now + 0.8);
+                osc.start(now); osc.stop(now + 0.8);
+            } else if (type === 'lose') {
+                osc.type = 'sawtooth'; osc.frequency.setValueAtTime(300, now); osc.frequency.exponentialRampToValueAtTime(50, now + 0.5);
+                gainNode.gain.setValueAtTime(0.2, now); gainNode.gain.linearRampToValueAtTime(0, now + 0.5);
+                osc.start(now); osc.stop(now + 0.5);
+            } else if (type === 'click') {
+                osc.type = 'square'; osc.frequency.setValueAtTime(800, now);
+                gainNode.gain.setValueAtTime(0.05, now); gainNode.gain.exponentialRampToValueAtTime(0.01, now + 0.05);
+                osc.start(now); osc.stop(now + 0.05);
+            }
+        };
+
+        // --- 画面切り替え ---
+        window.showScreen = (id) => {
+            playSound('click');
             document.querySelectorAll('.screen').forEach(el => el.classList.add('hidden'));
-            clearInterval(c_timer); 
-            if(target === 'top-menu') document.getElementById('top-menu').classList.remove('hidden');
-            if(target === 'cat-menu') document.getElementById('cat-menu').classList.remove('hidden');
-            if(target === 'flash-container') {
-                document.getElementById('flash-container').classList.remove('hidden');
-                document.getElementById('flash-setup').classList.remove('hidden');
-                document.getElementById('flash-game').classList.add('hidden');
+            document.getElementById(id).classList.remove('hidden');
+            activeGame = null;
+            if(id === 'cat-offline-menu') activeGame = 'offlineMenu';
+            if(id === 'flash-menu') document.getElementById('flash-input').value = "";
+        };
+
+        // --- 🎨 共通描画ロジック ---
+        function renderMaze(ctx, board, path, isPlayer) {
+            ctx.clearRect(0, 0, 320, 320);
+            for(let y=0; y<GRID_SIZE; y++) {
+                for(let x=0; x<GRID_SIZE; x++) {
+                    ctx.strokeStyle = "rgba(0,0,0,0.15)"; ctx.strokeRect(x*CELL_SIZE, y*CELL_SIZE, CELL_SIZE, CELL_SIZE);
+                    if(board[y][x] === 2) { ctx.fillStyle="#4e342e"; ctx.fillRect(x*CELL_SIZE, y*CELL_SIZE, CELL_SIZE, CELL_SIZE); } // 壁
+                    else if(x===0 && y===0) { ctx.fillStyle="rgba(102, 187, 106, 0.4)"; ctx.fillRect(x*CELL_SIZE, y*CELL_SIZE, CELL_SIZE, CELL_SIZE); } // スタート
+                    else if(x===7 && y===7) { ctx.fillStyle="rgba(255, 213, 79, 0.4)"; ctx.fillRect(x*CELL_SIZE, y*CELL_SIZE, CELL_SIZE, CELL_SIZE); } // ゴール
+                }
             }
-            if(target === 'memory-container') {
-                document.getElementById('memory-container').classList.remove('hidden');
-                document.getElementById('mem-setup').classList.remove('hidden');
-                document.getElementById('mem-status').innerText = "レベルを選択して開始";
-            }
-        }
-
-        // ==========================================
-        // 木製迷路ねこDX ロジック
-        // ==========================================
-        const pCanvas = document.getElementById('pCanvas'), pCtx = pCanvas.getContext('2d');
-        const aCanvas = document.getElementById('aCanvas'), aCtx = aCanvas.getContext('2d');
-        const c_statusTxt = document.getElementById('cat-status');
-
-        const GRID_SIZE = 8, CELL_SIZE = 320 / GRID_SIZE;
-        let c_board = [], c_path = [], c_aiSolution = [], c_aiIdx = 1, c_target = 0;
-        let c_isOver = false, c_mode = '', c_timer = null, c_hints = false, c_speed = 500, c_lv = 0;
-
-        const c_skins = [
-            { name: "WOOD", body: "#ffcc80", head: "#ffe0b2", bg: "#5d4037" },
-            { name: "STONE", body: "#90a4ae", head: "#cfd8dc", bg: "#37474f" },
-            { name: "GEM", body: "#4fc3f7", head: "#b3e5fc", bg: "#0277bd" },
-            { name: "GOLD", body: "#fdd835", head: "#fff9c4", bg: "#f57f17" }
-        ];
-        let c_currentSkin = c_skins[0];
-
-        const sGrid = document.getElementById('skinGrid');
-        c_skins.forEach((s, i) => {
-            const div = document.createElement('div');
-            div.className = 'skin-opt' + (i===0?' active':'');
-            div.style.backgroundColor = s.body;
-            div.onclick = () => {
-                document.querySelectorAll('.skin-opt').forEach(el=>el.classList.remove('active'));
-                div.classList.add('active');
-                c_currentSkin = s;
-            };
-            sGrid.appendChild(div);
-        });
-
-        const lGrid = document.getElementById('levelGrid');
-        for(let i=1; i<=10; i++) {
-            const b = document.createElement('button');
-            b.className = 'btn lv-btn'; b.innerText = i;
-            b.onclick = () => c_startMode('battle', 1100 - (i*100), i);
-            lGrid.appendChild(b);
-        }
-
-        async function c_solve(g, sx, sy, t) {
-            const v = new Set([`${sx},${sy}`]), p = [{x:sx, y:sy}];
-            let step = 0;
-            async function bt(cx, cy, count) {
-                if (step++ > 2000) return false;
-                const ds = [[0,-1], [0,1], [-1,0], [1,0]].sort(() => Math.random()-0.5);
-                for (const [dx, dy] of ds) {
-                    let nx = cx+dx, ny = cy+dy, s = [];
-                    while (nx>=0 && nx<GRID_SIZE && ny>=0 && ny<GRID_SIZE && g[ny][nx]===0 && !v.has(`${nx},${ny}`)) {
-                        s.push({x:nx, y:ny}); v.add(`${nx},${ny}`); nx+=dx; ny+=dy;
-                    }
-                    if (s.length > 0) {
-                        p.push(...s);
-                        if (await bt(s[s.length-1].x, s[s.length-1].y, count+s.length)) return true;
-                        s.forEach(i => { v.delete(`${i.x},${i.y}`); p.pop(); });
-                    }
+            // 軌跡の描画
+            path.forEach((p, i) => {
+                const isHead = i === path.length - 1;
+                ctx.fillStyle = isPlayer ? (isHead ? "#ffd54f" : "#ffecb3") : (isHead ? "#90caf9" : "#e3f2fd");
+                ctx.beginPath(); ctx.roundRect(p.x*CELL_SIZE+4, p.y*CELL_SIZE+4, CELL_SIZE-8, CELL_SIZE-8, 6); ctx.fill();
+                if(isHead) { // 目を描く
+                    ctx.fillStyle = "#3e2723";
+                    ctx.beginPath(); ctx.arc(p.x*CELL_SIZE+12, p.y*CELL_SIZE+16, 3, 0, 7); ctx.arc(p.x*CELL_SIZE+28, p.y*CELL_SIZE+16, 3, 0, 7); ctx.fill();
                 }
-                return count >= t;
-            }
-            return (await bt(sx, sy, 1)) ? [...p] : null;
-        }
-
-        async function c_generateStage() {
-            clearInterval(c_timer); c_isOver = true; c_statusTxt.innerText = "作成中...";
-            document.getElementById('ai-side').style.display = c_mode==='battle' ? 'block' : 'none';
-            while(true) {
-                let nb = Array.from({length:GRID_SIZE}, () => Array(GRID_SIZE).fill(0));
-                for(let i=0; i<12; i++) {
-                    let rx=Math.floor(Math.random()*GRID_SIZE), ry=Math.floor(Math.random()*GRID_SIZE);
-                    if(rx!==0 || ry!==0) nb[ry][rx] = 2;
-                }
-                const res = await c_solve(nb, 0, 0, 42);
-                if(res) {
-                    const s = new Set(res.map(i => `${i.x},${i.y}`));
-                    for(let y=0; y<GRID_SIZE; y++) for(let x=0; x<GRID_SIZE; x++) if(nb[y][x]===0 && !s.has(`${x},${y}`)) nb[y][x]=2;
-                    c_board = nb; c_aiSolution = res; c_target = res.length; break;
-                }
-                await new Promise(r => setTimeout(r, 0));
-            }
-            c_resetCurrentStage();
-        }
-
-        function c_resetCurrentStage() {
-            clearInterval(c_timer); c_path = [{x:0, y:0}]; c_aiIdx = 1; c_isOver = false; c_hints = false;
-            c_statusTxt.innerText = c_mode==='battle' ? `Lv.${c_lv} 開始！` : "特訓中";
-            c_render();
-            if(c_mode==='battle') c_timer = setInterval(c_aiMove, c_speed);
-        }
-
-        function c_aiMove() {
-            if(c_isOver) return;
-            if(c_aiIdx < c_aiSolution.length) {
-                let c=c_aiSolution[c_aiIdx-1], n=c_aiSolution[c_aiIdx], dx=n.x-c.x, dy=n.y-c.y;
-                while(c_aiIdx < c_aiSolution.length) {
-                    let p1=c_aiSolution[c_aiIdx-1], p2=c_aiSolution[c_aiIdx];
-                    if(p2.x-p1.x===dx && p2.y-p1.y===dy) c_aiIdx++; else break;
-                }
-                c_render();
-            }
-            if(c_aiIdx >= c_target) { c_isOver = true; c_statusTxt.innerText = "AIの勝利..."; }
-        }
-
-        function c_render() {
-            [pCtx, aCtx].forEach((ctx, id) => {
-                ctx.clearRect(0,0,320,320);
-                for(let y=0; y<GRID_SIZE; y++) for(let x=0; x<GRID_SIZE; x++) {
-                    ctx.strokeStyle = "rgba(0,0,0,0.1)"; ctx.strokeRect(x*CELL_SIZE, y*CELL_SIZE, CELL_SIZE, CELL_SIZE);
-                    if(c_board[y][x]===2) { ctx.fillStyle="#5d4037"; ctx.fillRect(x*CELL_SIZE+2, y*CELL_SIZE+2, CELL_SIZE-4, CELL_SIZE-4); }
-                }
-                if(id===0 && c_hints && c_mode==='practice') {
-                    c_aiSolution.forEach((p,i) => { ctx.fillStyle="rgba(0,0,0,0.3)"; ctx.font="10px serif"; ctx.fillText(i+1, p.x*CELL_SIZE+5, p.y*CELL_SIZE+15); });
-                }
-                const cur = id===0 ? c_path : c_aiSolution.slice(0, c_aiIdx);
-                const s = id===0 ? c_currentSkin : {body: "#3e2723", head: "#1a1a2e"};
-                cur.forEach((p, i) => {
-                    const isHead = i===cur.length-1;
-                    ctx.fillStyle = isHead ? s.head : s.body;
-                    ctx.beginPath(); ctx.roundRect(p.x*CELL_SIZE+4, p.y*CELL_SIZE+4, CELL_SIZE-8, CELL_SIZE-8, 4); ctx.fill();
-                    if(isHead) {
-                        ctx.fillStyle = id===0 ? "#000" : "#fff";
-                        ctx.beginPath(); ctx.arc(p.x*CELL_SIZE+CELL_SIZE*0.3, p.y*CELL_SIZE+CELL_SIZE*0.4, 2, 0, 7);
-                        ctx.arc(p.x*CELL_SIZE+CELL_SIZE*0.7, p.y*CELL_SIZE+CELL_SIZE*0.4, 2, 0, 7); ctx.fill();
-                    }
-                });
             });
         }
 
-        function c_move(dx, dy) {
-            if(c_isOver) return;
-            let nx = c_path[c_path.length-1].x+dx, ny = c_path[c_path.length-1].y+dy, m = false;
-            while(nx>=0 && nx<GRID_SIZE && ny>=0 && ny<GRID_SIZE && c_board[ny][nx]===0 && !c_path.some(p => p.x===nx && p.y===ny)) {
-                c_path.push({x:nx, y:ny}); nx+=dx; ny+=dy; m = true;
+        function generateMazeArray() {
+            let b = Array.from({length:GRID_SIZE}, () => Array(GRID_SIZE).fill(0));
+            // 簡易的にランダムな壁を配置（必ずゴールできるとは限らない簡略版）
+            for(let i=0; i<15; i++) {
+                let rx=Math.floor(Math.random()*GRID_SIZE), ry=Math.floor(Math.random()*GRID_SIZE);
+                if((rx!==0 || ry!==0) && (rx!==7 || ry!==7)) b[ry][rx] = 2;
             }
-            if(m) { c_render(); if(c_path.length===c_target) { c_isOver=true; clearInterval(c_timer); c_statusTxt.innerText="勝利！"; } }
+            return b;
         }
-
-        function c_startMode(m, s, l) { 
-            c_mode=m; c_speed=s; c_lv=l; 
-            document.getElementById('cat-menu').classList.add('hidden'); 
-            document.getElementById('cat-game-container').classList.remove('hidden'); 
-            c_generateStage(); 
-        }
-
-        function c_toggleHint() { c_hints=!c_hints; c_render(); }
-
-        window.addEventListener('keydown', e => {
-            if(document.getElementById('cat-game-container').classList.contains('hidden')) return;
-            const k = e.key.toLowerCase();
-            if(k==='arrowup') c_move(0,-1); if(k==='arrowdown') c_move(0,1);
-            if(k==='arrowleft') c_move(-1,0); if(k==='arrowright') c_move(1,0);
-            if(k==='r') c_resetCurrentStage(); if(k==='n') c_generateStage(); if(k==='1') c_toggleHint();
-        });
-
 
         // ==========================================
-        // フラッシュ暗算 ロジック
+        // 🌐 オンライン迷路対戦ロジック
+        // ==========================================
+        let onRoomId = "", onMyRole = "", onBoard = [], onPath = [], onOppPath = [], onIsOver = false;
+        
+        window.onCat_createRoom = async () => {
+            playSound('click');
+            onRoomId = Math.floor(1000 + Math.random() * 9000).toString();
+            onMyRole = "p1";
+            document.getElementById('onCat-room-info').innerText = "🔑 合言葉: " + onRoomId;
+            document.getElementById('onCat-status').innerText = "対戦相手を待っています...";
+            showScreen('online-game'); activeGame = 'onlineCat'; onIsOver = false; onPath = [{x:0, y:0}]; onOppPath = [{x:0, y:0}];
+            
+            onBoard = generateMazeArray();
+            await set(ref(db, `rooms/${onRoomId}`), { board: JSON.stringify(onBoard), p1: {x:0, y:0}, status: "waiting" });
+            
+            // 自分が切断した時に部屋を消す
+            onDisconnect(ref(db, `rooms/${onRoomId}`)).remove();
+            onCat_listen();
+        };
+
+        window.onCat_joinRoom = () => {
+            playSound('click');
+            onRoomId = document.getElementById('join-room-id').value;
+            if(!onRoomId) return alert("合言葉を入力してください");
+            onMyRole = "p2";
+            document.getElementById('onCat-room-info').innerText = "🔑 合言葉: " + onRoomId;
+            document.getElementById('onCat-status').innerText = "接続しました！";
+            showScreen('online-game'); activeGame = 'onlineCat'; onIsOver = false; onPath = [{x:0, y:0}]; onOppPath = [{x:0, y:0}];
+            
+            set(ref(db, `rooms/${onRoomId}/p2`), {x:0, y:0});
+            set(ref(db, `rooms/${onRoomId}/status`), "playing");
+            onDisconnect(ref(db, `rooms/${onRoomId}/p2`)).remove();
+            onCat_listen();
+        };
+
+        function onCat_listen() {
+            onValue(ref(db, `rooms/${onRoomId}`), (snap) => {
+                const data = snap.val();
+                if(!data) { document.getElementById('onCat-status').innerText = "相手が切断しました"; onIsOver = true; return; }
+                
+                if(data.board && onBoard.length === 0) onBoard = JSON.parse(data.board);
+                if(data.status === "playing" && !onIsOver) document.getElementById('onCat-status').innerText = "🔥 対戦中！ゴールを目指せ！";
+
+                const oppRole = onMyRole === "p1" ? "p2" : "p1";
+                if(data[oppRole]) {
+                    // 相手の移動を反映
+                    if(onOppPath.length === 0 || onOppPath[onOppPath.length-1].x !== data[oppRole].x || onOppPath[onOppPath.length-1].y !== data[oppRole].y) {
+                        onOppPath.push({x: data[oppRole].x, y: data[oppRole].y});
+                    }
+                }
+                
+                if(data.winner && !onIsOver) {
+                    onIsOver = true;
+                    if(data.winner === onMyRole) { document.getElementById('onCat-status').innerText = "🎉 あなたの勝利！"; playSound('win'); }
+                    else { document.getElementById('onCat-status').innerText = "💀 相手の勝利..."; playSound('lose'); }
+                }
+                onCat_render();
+            });
+        }
+
+        function onCat_render() {
+            const pCtx = document.getElementById('onCat-pCanvas').getContext('2d');
+            const aCtx = document.getElementById('onCat-aCanvas').getContext('2d');
+            if(onBoard.length > 0) {
+                renderMaze(pCtx, onBoard, onPath, true);
+                renderMaze(aCtx, onBoard, onOppPath, false);
+            }
+        }
+
+        // ==========================================
+        // 🤖 AI迷路対戦ロジック (オフライン)
+        // ==========================================
+        let offBoard=[], offPath=[], offAiPath=[], offAiFullRoute=[], offIsOver=false, offAiTimer=null, offSpeed=500;
+        
+        window.offCat_start = (speed) => {
+            offSpeed = speed;
+            showScreen('cat-offline-game'); activeGame = 'offlineCat';
+            offCat_generate();
+        };
+
+        // 確実な迷路とAIの正解ルートを生成する関数
+        async function buildSolvableMaze() {
+            let b = Array.from({length:GRID_SIZE}, () => Array(GRID_SIZE).fill(2)); // 全て壁
+            let pathSet = new Set(["0,0"]); let route = [{x:0, y:0}]; b[0][0] = 0;
+            
+            // 穴掘り法でゴール(7,7)までのルートを作る（超簡易版）
+            let cx=0, cy=0;
+            while(cx<7 || cy<7) {
+                let dirs = [];
+                if(cx<7) dirs.push({dx:1, dy:0}); if(cy<7) dirs.push({dx:0, dy:1});
+                let d = dirs[Math.floor(Math.random()*dirs.length)];
+                cx+=d.dx; cy+=d.dy;
+                b[cy][cx] = 0; pathSet.add(`${cx},${cy}`); route.push({x:cx, y:cy});
+            }
+            // ランダムな空き地を追加
+            for(let i=0; i<30; i++) {
+                let rx=Math.floor(Math.random()*GRID_SIZE), ry=Math.floor(Math.random()*GRID_SIZE);
+                b[ry][rx] = 0;
+            }
+            return { board: b, solution: route };
+        }
+
+        window.offCat_generate = async () => {
+            playSound('click'); clearInterval(offAiTimer); offIsOver = false;
+            document.getElementById('offCat-status').innerText = "🔥 スタート！";
+            offPath = [{x:0, y:0}]; offAiPath = [{x:0, y:0}];
+            const data = await buildSolvableMaze();
+            offBoard = data.board; offAiFullRoute = data.solution;
+            
+            offCat_render();
+            let aiIdx = 1;
+            offAiTimer = setInterval(() => {
+                if(offIsOver) return clearInterval(offAiTimer);
+                if(aiIdx < offAiFullRoute.length) {
+                    offAiPath.push(offAiFullRoute[aiIdx]); aiIdx++;
+                    playSound('move'); offCat_render();
+                    if(offAiFullRoute[aiIdx-1].x === 7 && offAiFullRoute[aiIdx-1].y === 7) {
+                        offIsOver = true; document.getElementById('offCat-status').innerText = "💀 AIの勝利..."; playSound('lose');
+                    }
+                }
+            }, offSpeed);
+        };
+
+        function offCat_render() {
+            renderMaze(document.getElementById('offCat-pCanvas').getContext('2d'), offBoard, offPath, true);
+            renderMaze(document.getElementById('offCat-aCanvas').getContext('2d'), offBoard, offAiPath, false);
+        }
+
+        // ==========================================
+        // ⚡ フラッシュ暗算ロジック
         // ==========================================
         let flashSum = 0;
-        function startFlash(lv) {
-            document.getElementById('flash-setup').classList.add('hidden');
-            document.getElementById('flash-game').classList.remove('hidden');
+        window.startFlash = (lv) => {
+            showScreen('flash-game'); activeGame = 'flash';
             document.getElementById('flash-answer-area').classList.add('hidden');
             const display = document.getElementById('flash-display');
-            const count = 3 + lv; 
-            const speed = 1000 - (lv * 100); 
-            const range = lv * 10;
-            
-            flashSum = 0;
-            let currentCount = 0;
-            display.innerText = "準備完了";
             display.style.color = "var(--accent)";
-
+            
+            const count = 3 + lv; 
+            const speed = 1000 - (lv * 120); 
+            const range = lv * 10;
+            flashSum = 0; let currentCount = 0;
+            display.innerText = "3"; playSound('click');
+            
+            setTimeout(() => { display.innerText = "2"; playSound('click'); }, 1000);
+            setTimeout(() => { display.innerText = "1"; playSound('click'); }, 2000);
             setTimeout(() => {
                 const interval = setInterval(() => {
                     if (currentCount < count) {
                         let num = Math.floor(Math.random() * range) + 1;
-                        display.innerText = num;
-                        flashSum += num;
-                        currentCount++;
+                        display.innerText = num; flashSum += num; currentCount++; playSound('move');
                     } else {
                         clearInterval(interval);
-                        display.innerText = "？";
+                        display.innerText = "？"; playSound('click');
                         document.getElementById('flash-answer-area').classList.remove('hidden');
-                        document.getElementById('flash-input').value = "";
                         document.getElementById('flash-input').focus();
                     }
                 }, speed);
-            }, 1000);
-        }
+            }, 3000);
+        };
 
-        function checkFlashAnswer() {
+        window.checkFlashAnswer = () => {
             const ans = parseInt(document.getElementById('flash-input').value);
             const display = document.getElementById('flash-display');
+            document.getElementById('flash-answer-area').classList.add('hidden');
             if (ans === flashSum) {
-                display.innerText = "大正解！";
-                display.style.color = "#4caf50";
+                display.innerText = "大正解！"; display.style.color = "var(--success)"; playSound('win');
             } else {
-                display.innerText = "残念: " + flashSum;
-                display.style.color = "#f44336";
+                display.innerText = "残念: " + flashSum; display.style.color = "var(--danger)"; playSound('lose');
             }
-            setTimeout(() => showMenu('flash-container'), 2000);
-        }
+        };
 
         // ==========================================
-        // 記憶力タイル ロジック
+        // 🧠 記憶力タイルロジック
         // ==========================================
-        let memSequence = [], userSequence = [], isInputPhase = false;
+        let memSequence = [], memUserSeq = [], memIsInput = false;
         const memGrid = document.getElementById('memory-grid');
         for(let i=0; i<16; i++) {
-            const d = document.createElement('div');
-            d.className = 'tile';
-            d.onclick = () => handleTileClick(i);
-            memGrid.appendChild(d);
-        }
-        
-        function startMemory(len) {
-            document.getElementById('mem-setup').classList.add('hidden');
-            memSequence = []; userSequence = []; isInputPhase = false;
-            document.getElementById('mem-status').innerText = "記憶してください...";
-            for(let i=0; i<len; i++) memSequence.push(Math.floor(Math.random()*16));
-            showSequence();
+            const d = document.createElement('div'); d.className = 'tile';
+            d.onclick = () => mem_handleTile(i); memGrid.appendChild(d);
         }
 
-        async function showSequence() {
+        window.startMemory = async (len) => {
+            showScreen('memory-menu'); activeGame = 'memory'; memIsInput = false; memSequence = []; memUserSeq = [];
+            document.getElementById('mem-status').innerText = "順番を覚えてね..."; document.getElementById('mem-setup').classList.add('hidden');
+            for(let i=0; i<len; i++) memSequence.push(Math.floor(Math.random()*16));
+            
             const tiles = document.querySelectorAll('.tile');
+            await new Promise(r => setTimeout(r, 1000));
             for(let idx of memSequence) {
-                await new Promise(r => setTimeout(r, 600));
-                tiles[idx].classList.add('active');
+                playSound('click'); tiles[idx].classList.add('active');
                 await new Promise(r => setTimeout(r, 400));
                 tiles[idx].classList.remove('active');
+                await new Promise(r => setTimeout(r, 200));
             }
-            isInputPhase = true;
-            document.getElementById('mem-status').innerText = "順番にタップ！";
+            memIsInput = true; document.getElementById('mem-status').innerText = "順番にタップ！";
+        };
+
+        function mem_handleTile(i) {
+            if(!memIsInput) return;
+            const tiles = document.querySelectorAll('.tile');
+            playSound('move'); tiles[i].classList.add('active');
+            setTimeout(() => tiles[i].classList.remove('active'), 200);
+            memUserSeq.push(i);
+
+            if(memUserSeq[memUserSeq.length-1] !== memSequence[memUserSeq.length-1]) {
+                document.getElementById('mem-status').innerText = "失敗..."; memIsInput = false; playSound('lose');
+                setTimeout(() => { document.getElementById('mem-status').innerText="レベルを選択"; document.getElementById('mem-setup').classList.remove('hidden'); }, 2000);
+            } else if(memUserSeq.length === memSequence.length) {
+                document.getElementById('mem-status').innerText = "完璧！クリア！"; memIsInput = false; playSound('win');
+                setTimeout(() => { document.getElementById('mem-status').innerText="レベルを選択"; document.getElementById('mem-setup').classList.remove('hidden'); }, 2000);
+            }
         }
 
-        function handleTileClick(i) {
-            if(!isInputPhase) return;
-            const tiles = document.querySelectorAll('.tile');
-            tiles[i].classList.add('active');
-            setTimeout(() => tiles[i].classList.remove('active'), 200);
-            userSequence.push(i);
+        // ==========================================
+        // 共通キーボード操作処理 (迷路ゲーム用)
+        // ==========================================
+        window.addEventListener('keydown', (e) => {
+            // 現在アクティブな迷路ゲームの種類を取得
+            let isOnline = (activeGame === 'onlineCat');
+            let isOffline = (activeGame === 'offlineCat');
+            if(!isOnline && !isOffline) return;
             
-            if(userSequence[userSequence.length-1] !== memSequence[userSequence.length-1]) {
-                document.getElementById('mem-status').innerText = "失敗...";
-                isInputPhase = false;
-                setTimeout(() => showMenu('memory-container'), 1500);
-            } else if(userSequence.length === memSequence.length) {
-                document.getElementById('mem-status').innerText = "完璧！クリア！";
-                isInputPhase = false;
-                setTimeout(() => showMenu('memory-container'), 1500);
+            let board = isOnline ? onBoard : offBoard;
+            let path = isOnline ? onPath : offPath;
+            let isOver = isOnline ? onIsOver : offIsOver;
+            
+            if(isOver || board.length === 0) return;
+
+            let dx=0, dy=0;
+            if(e.key === "ArrowUp") { dy=-1; e.preventDefault(); }
+            if(e.key === "ArrowDown") { dy=1; e.preventDefault(); }
+            if(e.key === "ArrowLeft") { dx=-1; e.preventDefault(); }
+            if(e.key === "ArrowRight") { dx=1; e.preventDefault(); }
+            
+            if(dx!==0 || dy!==0) {
+                let last = path[path.length-1];
+                let nx = last.x + dx, ny = last.y + dy;
+                // 移動可能判定
+                if(nx>=0 && nx<GRID_SIZE && ny>=0 && ny<GRID_SIZE && board[ny][nx]===0) {
+                    path.push({x:nx, y:ny}); playSound('move');
+                    
+                    if(isOnline) {
+                        set(ref(db, `rooms/${onRoomId}/${onMyRole}`), {x:nx, y:ny});
+                        if(nx===7 && ny===7) set(ref(db, `rooms/${onRoomId}/winner`), onMyRole);
+                        onCat_render();
+                    } else {
+                        offCat_render();
+                        if(nx===7 && ny===7) {
+                            offIsOver = true; clearInterval(offAiTimer); playSound('win');
+                            document.getElementById('offCat-status').innerText = "🎉 あなたの勝利！";
+                        }
+                    }
+                }
             }
-        }
+        });
     </script>
 </body>
 </html>
