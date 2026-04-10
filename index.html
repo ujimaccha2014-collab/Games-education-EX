@@ -2,7 +2,7 @@
 <html lang="ja">
 <head>
     <meta charset="UTF-8">
-    <title>木製ゲームDX</title>
+    <title>木製ゲームDX - アルティメット完全版</title>
     <style>
         :root {
             --wood-dark: #5d4037; --wood-medium: #8d6e63; --wood-light: #d7ccc8; --bg: #3e2723; --accent: #fdd835;
@@ -45,15 +45,20 @@
         .lv-btn { min-width: 45px; background: #795548; padding: 10px; }
         #cat-status { font-size: 24px; margin: 10px; height: 35px; color: var(--wood-light); font-weight: bold; }
 
-        /* フラッシュ暗算用 */
+        /* フラッシュ暗算等 */
         #flash-display { font-size: 90px; height: 140px; line-height: 140px; color: var(--accent); text-shadow: 4px 4px 0 #000; font-weight: bold; }
-        input[type="text"], input[type="number"] { font-size: 24px; padding: 10px; width: 180px; text-align: center; border-radius: 8px; border: none; margin: 15px; }
+        input[type="text"], input[type="number"] { font-size: 20px; padding: 10px; width: 180px; text-align: center; border-radius: 8px; border: none; margin: 10px; font-weight: bold; }
+
+        /* ランキング用 */
+        #ranking-area {
+            background: rgba(0,0,0,0.4); padding: 15px; margin-top: 15px; border-radius: 8px; 
+            width: 100%; max-width: 660px; max-height: 120px; overflow-y: auto; border: 2px solid #5d4037;
+        }
+        .rank-item { padding: 4px 8px; border-radius: 4px; font-size: 14px; font-weight: bold; }
 
         /* 記憶力タイル用 */
         #memory-grid { display: grid; grid-template-columns: repeat(4, 1fr); gap: 12px; margin-top: 20px; }
-        .tile { 
-            width: 65px; height: 65px; background: var(--wood-medium); border-radius: 8px; cursor: pointer; border: 2px solid #2a1b15; transition: background 0.1s;
-        }
+        .tile { width: 65px; height: 65px; background: var(--wood-medium); border-radius: 8px; cursor: pointer; border: 2px solid #2a1b15; transition: 0.1s; }
         .tile.active { background: var(--accent) !important; box-shadow: 0 0 25px var(--accent); }
     </style>
 </head>
@@ -62,7 +67,7 @@
     <div id="top-menu" class="screen">
         <h1 style="font-size: 48px;">木製ゲームDX</h1>
         <div class="mode-box">
-            <button class="btn" style="width: 280px; background: linear-gradient(to bottom, #64b5f6, #1976d2); border-color: #0d47a1;" onclick="showMenu('online-menu')">🌐 オンライン対戦</button><br>
+            <button class="btn" style="width: 280px; background: linear-gradient(to bottom, #64b5f6, #1976d2); border-color: #0d47a1;" onclick="showMenu('online-menu')">🌐 オンライン対戦 (最大30人)</button><br>
             <button class="btn" style="width: 280px;" onclick="showMenu('cat-menu')">🤖 AI迷路＆特訓</button><br>
             <button class="btn" style="width: 280px;" onclick="showMenu('flash-container')">⚡ フラッシュ暗算</button><br>
             <button class="btn" style="width: 280px;" onclick="showMenu('memory-container')">🧠 記憶力タイル</button>
@@ -72,9 +77,14 @@
     <div id="online-menu" class="screen hidden">
         <h1>オンライン対戦</h1>
         <div class="mode-box">
+            <div style="margin-bottom:15px;">
+                <label style="font-weight:bold; font-size:14px; color:var(--accent);">プレイヤー名</label><br>
+                <input type="text" id="player-name" placeholder="名前を入力" maxlength="10">
+            </div>
+            <hr style="border: 1px solid #4e342e; margin-bottom: 20px;">
             <button class="btn" style="width: 100%; background: linear-gradient(to bottom, #81c784, #388e3c);" onclick="onCat_createRoom()">部屋を作る (ホスト)</button>
             <div style="margin: 15px 0 5px; font-weight: bold;">または</div>
-            <input type="text" id="join-room-id" placeholder="合言葉" autocomplete="off">
+            <input type="text" id="join-room-id" placeholder="合言葉 (数字)" autocomplete="off">
             <button class="btn" style="width: 100%; background: linear-gradient(to bottom, #64b5f6, #1976d2);" onclick="onCat_joinRoom()">部屋に入る (ゲスト)</button>
             <button class="btn" style="margin-top:20px; width: 100%; opacity: 0.8;" onclick="showMenu('top-menu')">戻る</button>
         </div>
@@ -95,20 +105,38 @@
     <div id="cat-game-container" class="screen hidden">
         <div id="onCat-room-info" class="hidden" style="font-size: 20px; color: var(--accent); font-weight: bold; margin-bottom: 5px;"></div>
         <div id="cat-status">準備中...</div>
+        
         <div style="display: flex; gap: 20px;">
-            <div><canvas id="pCanvas" width="320" height="320"></canvas><div style="text-align:center;font-size:14px;margin-top:5px;font-weight:bold;">あなた</div></div>
-            <div id="ai-side"><canvas id="aCanvas" width="320" height="320"></canvas><div id="opp-label" style="text-align:center;font-size:14px;margin-top:5px;font-weight:bold;">AI</div></div>
+            <div>
+                <canvas id="pCanvas" width="320" height="320"></canvas>
+                <div style="text-align:center;font-size:14px;margin-top:5px;font-weight:bold;">あなた <span id="my-name-display" style="color:var(--accent);"></span></div>
+            </div>
+            <div id="ai-side">
+                <canvas id="aCanvas" width="320" height="320"></canvas>
+                <div id="opp-label" style="text-align:center;font-size:14px;margin-top:5px;font-weight:bold;">
+                    <span id="opp-label-text">AI</span>
+                    <select id="view-player-select" class="hidden" onchange="changeViewTarget()" style="font-size:14px; padding:4px; border-radius:4px; max-width:150px;"></select>
+                </div>
+            </div>
         </div>
+
+        <!-- ランキング表示エリア (オンライン時のみ表示) -->
+        <div id="ranking-area" class="hidden">
+            <h3 style="margin:0 0 8px 0; font-size:14px; color:var(--wood-light);">🏆 ルーム内スコア＆順位</h3>
+            <div id="ranking-list" style="display:flex; flex-wrap:wrap; gap:8px;"></div>
+        </div>
+
         <!-- ボタン群 -->
         <div id="game-controls" style="margin-top: 15px;">
             <button id="btn-new" class="btn" onclick="c_generateStage()">新盤面 (N)</button>
             <button id="btn-reset" class="btn" onclick="c_resetCurrentStage()">リセット (R)</button>
             <button id="btn-hint" class="btn" onclick="c_toggleHint()">ヒント (1)</button>
             <button id="btn-back" class="btn" onclick="showMenu('cat-menu')">戻る</button>
-            <button id="btn-quit" class="btn hidden" style="background: #d32f2f;" onclick="location.reload()">対戦をやめる</button>
+            <button id="btn-quit" class="btn hidden" style="background: #d32f2f;" onclick="location.reload()">退室する</button>
         </div>
     </div>
 
+    <!-- フラッシュ暗算 -->
     <div id="flash-container" class="screen hidden">
         <h1>フラッシュ暗算</h1>
         <div class="mode-box">
@@ -131,6 +159,7 @@
         </div>
     </div>
 
+    <!-- 記憶力タイル -->
     <div id="memory-container" class="screen hidden">
         <h1>記憶力タイル</h1>
         <div class="mode-box">
@@ -147,7 +176,7 @@
 
     <script type="module">
         import { initializeApp } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-app.js";
-        import { getDatabase, ref, set, onValue, onDisconnect } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-database.js";
+        import { getDatabase, ref, set, get, update, onValue, onDisconnect } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-database.js";
 
         const firebaseConfig = {
             apiKey: "AIzaSyC0Kcn330WSPc9COXDtKaRwwjiL8SbzDVI",
@@ -161,34 +190,60 @@
         const app = initializeApp(firebaseConfig);
         const db = getDatabase(app);
 
-        // --- 🎵 サウンドエンジン (Web Audio API) ---
+        // --- 🎵 サウンドエンジン ---
         const audioCtx = new (window.AudioContext || window.webkitAudioContext)();
         function playSound(type) {
             if (audioCtx.state === 'suspended') audioCtx.resume();
-            const osc = audioCtx.createOscillator(); const gainNode = audioCtx.createGain();
-            osc.connect(gainNode); gainNode.connect(audioCtx.destination);
+            const osc = audioCtx.createOscillator(); 
+            const gainNode = audioCtx.createGain();
+            osc.connect(gainNode); 
+            gainNode.connect(audioCtx.destination);
             const now = audioCtx.currentTime;
 
             if (type === 'move') {
-                osc.type = 'sine'; osc.frequency.setValueAtTime(400, now); osc.frequency.exponentialRampToValueAtTime(600, now + 0.05);
-                gainNode.gain.setValueAtTime(0.1, now); gainNode.gain.exponentialRampToValueAtTime(0.01, now + 0.1);
-                osc.start(now); osc.stop(now + 0.1);
+                osc.type = 'sine'; 
+                osc.frequency.setValueAtTime(400, now); 
+                osc.frequency.exponentialRampToValueAtTime(600, now + 0.05);
+                gainNode.gain.setValueAtTime(0.1, now); 
+                gainNode.gain.exponentialRampToValueAtTime(0.01, now + 0.1);
+                osc.start(now); 
+                osc.stop(now + 0.1);
             } else if (type === 'win') {
-                osc.type = 'triangle'; osc.frequency.setValueAtTime(440, now); osc.frequency.setValueAtTime(554, now+0.1); osc.frequency.setValueAtTime(659, now+0.2); osc.frequency.setValueAtTime(880, now+0.3);
-                gainNode.gain.setValueAtTime(0.2, now); gainNode.gain.linearRampToValueAtTime(0, now + 0.8);
-                osc.start(now); osc.stop(now + 0.8);
+                osc.type = 'triangle'; 
+                osc.frequency.setValueAtTime(440, now); 
+                osc.frequency.setValueAtTime(554, now+0.1); 
+                osc.frequency.setValueAtTime(659, now+0.2); 
+                osc.frequency.setValueAtTime(880, now+0.3);
+                gainNode.gain.setValueAtTime(0.2, now); 
+                gainNode.gain.linearRampToValueAtTime(0, now + 0.8);
+                osc.start(now); 
+                osc.stop(now + 0.8);
             } else if (type === 'lose') {
-                osc.type = 'sawtooth'; osc.frequency.setValueAtTime(300, now); osc.frequency.exponentialRampToValueAtTime(50, now + 0.5);
-                gainNode.gain.setValueAtTime(0.2, now); gainNode.gain.linearRampToValueAtTime(0, now + 0.5);
-                osc.start(now); osc.stop(now + 0.5);
+                osc.type = 'sawtooth'; 
+                osc.frequency.setValueAtTime(300, now); 
+                osc.frequency.exponentialRampToValueAtTime(50, now + 0.5);
+                gainNode.gain.setValueAtTime(0.2, now); 
+                gainNode.gain.linearRampToValueAtTime(0, now + 0.5);
+                osc.start(now); 
+                osc.stop(now + 0.5);
             } else if (type === 'click') {
-                osc.type = 'square'; osc.frequency.setValueAtTime(800, now);
-                gainNode.gain.setValueAtTime(0.05, now); gainNode.gain.exponentialRampToValueAtTime(0.01, now + 0.05);
-                osc.start(now); osc.stop(now + 0.05);
+                osc.type = 'square'; 
+                osc.frequency.setValueAtTime(800, now);
+                gainNode.gain.setValueAtTime(0.05, now); 
+                gainNode.gain.exponentialRampToValueAtTime(0.01, now + 0.05);
+                osc.start(now); 
+                osc.stop(now + 0.05);
             }
         }
 
-        // --- 画面切り替え共通管理 ---
+        // 初期設定：前回入力した名前を復元する
+        document.addEventListener("DOMContentLoaded", () => {
+            let savedName = localStorage.getItem("woodenGamePlayerName");
+            if(savedName) {
+                document.getElementById('player-name').value = savedName;
+            }
+        });
+
         window.showMenu = function(target) {
             playSound('click');
             document.querySelectorAll('.screen').forEach(el => el.classList.add('hidden'));
@@ -209,49 +264,78 @@
         };
 
         // ==========================================
-        // 木製迷路ねこDX ロジック (オフライン ＆ オンライン)
+        // 木製迷路ねこDX ロジック
         // ==========================================
-        const pCanvas = document.getElementById('pCanvas'), pCtx = pCanvas.getContext('2d');
-        const aCanvas = document.getElementById('aCanvas'), aCtx = aCanvas.getContext('2d');
+        const pCanvas = document.getElementById('pCanvas');
+        const pCtx = pCanvas.getContext('2d');
+        const aCanvas = document.getElementById('aCanvas');
+        const aCtx = aCanvas.getContext('2d');
         const c_statusTxt = document.getElementById('cat-status');
 
-        const GRID_SIZE = 8, CELL_SIZE = 320 / GRID_SIZE;
-        let c_board = [], c_path = [], c_aiSolution = [], c_aiIdx = 1, c_target = 0;
-        let c_isOver = false, c_mode = '', c_timer = null, c_hints = false, c_speed = 500, c_lv = 0;
+        const GRID_SIZE = 8;
+        const CELL_SIZE = 320 / GRID_SIZE;
+        let c_board = [], c_path = [], c_aiSolution = [];
+        let c_aiIdx = 1, c_target = 0;
+        let c_isOver = false, c_mode = '', c_timer = null, c_hints = false;
+        let c_speed = 500, c_lv = 0;
+        let wasFinished = false;
 
-        const c_skins = [{ name: "WOOD", body: "#ffcc80", head: "#ffe0b2", bg: "#5d4037" }, { name: "STONE", body: "#90a4ae", head: "#cfd8dc", bg: "#37474f" }, { name: "GEM", body: "#4fc3f7", head: "#b3e5fc", bg: "#0277bd" }, { name: "GOLD", body: "#fdd835", head: "#fff9c4", bg: "#f57f17" }];
+        const c_skins = [
+            { name: "WOOD", body: "#ffcc80", head: "#ffe0b2" }, 
+            { name: "STONE", body: "#90a4ae", head: "#cfd8dc" }, 
+            { name: "GEM", body: "#4fc3f7", head: "#b3e5fc" }, 
+            { name: "GOLD", body: "#fdd835", head: "#fff9c4" }
+        ];
         let c_currentSkin = c_skins[0];
 
+        // スキン選択 UI 生成
         const sGrid = document.getElementById('skinGrid');
         c_skins.forEach((s, i) => {
             const div = document.createElement('div');
-            div.className = 'skin-opt' + (i===0?' active':''); div.style.backgroundColor = s.body;
-            div.onclick = () => { playSound('click'); document.querySelectorAll('.skin-opt').forEach(el=>el.classList.remove('active')); div.classList.add('active'); c_currentSkin = s; };
+            div.className = 'skin-opt' + (i===0 ? ' active' : ''); 
+            div.style.backgroundColor = s.body;
+            div.onclick = () => { 
+                playSound('click'); 
+                document.querySelectorAll('.skin-opt').forEach(el => el.classList.remove('active')); 
+                div.classList.add('active'); 
+                c_currentSkin = s; 
+            };
             sGrid.appendChild(div);
         });
 
+        // AIレベル選択 UI 生成
         const lGrid = document.getElementById('levelGrid');
         for(let i=1; i<=10; i++) {
             const b = document.createElement('button');
-            b.className = 'btn lv-btn'; b.innerText = i;
-            b.onclick = () => { playSound('click'); window.c_startMode('battle', 1100 - (i*100), i); };
+            b.className = 'btn lv-btn'; 
+            b.innerText = i;
+            b.onclick = () => { 
+                playSound('click'); 
+                window.c_startMode('battle', 1100 - (i*100), i); 
+            };
             lGrid.appendChild(b);
         }
 
         async function c_solve(g, sx, sy, t) {
-            const v = new Set([`${sx},${sy}`]), p = [{x:sx, y:sy}];
+            const v = new Set([`${sx},${sy}`]);
+            const p = [{x:sx, y:sy}];
             let step = 0;
+
             async function bt(cx, cy, count) {
                 if (step++ > 2000) return false;
-                const ds = [[0,-1], [0,1], [-1,0], [1,0]].sort(() => Math.random()-0.5);
+                const ds = [[0,-1], [0,1], [-1,0], [1,0]].sort(() => Math.random() - 0.5);
                 for (const [dx, dy] of ds) {
-                    let nx = cx+dx, ny = cy+dy, s = [];
+                    let nx = cx + dx, ny = cy + dy;
+                    let s = [];
                     while (nx>=0 && nx<GRID_SIZE && ny>=0 && ny<GRID_SIZE && g[ny][nx]===0 && !v.has(`${nx},${ny}`)) {
-                        s.push({x:nx, y:ny}); v.add(`${nx},${ny}`); nx+=dx; ny+=dy;
+                        s.push({x:nx, y:ny}); 
+                        v.add(`${nx},${ny}`); 
+                        nx += dx; 
+                        ny += dy;
                     }
                     if (s.length > 0) {
                         p.push(...s);
-                        if (await bt(s[s.length-1].x, s[s.length-1].y, count+s.length)) return true;
+                        if (await bt(s[s.length-1].x, s[s.length-1].y, count + s.length)) return true;
                         s.forEach(i => { v.delete(`${i.x},${i.y}`); p.pop(); });
                     }
                 }
@@ -264,13 +348,18 @@
             while(true) {
                 let nb = Array.from({length:GRID_SIZE}, () => Array(GRID_SIZE).fill(0));
                 for(let i=0; i<12; i++) {
-                    let rx=Math.floor(Math.random()*GRID_SIZE), ry=Math.floor(Math.random()*GRID_SIZE);
-                    if(rx!==0 || ry!==0) nb[ry][rx] = 2;
+                    let rx = Math.floor(Math.random()*GRID_SIZE);
+                    let ry = Math.floor(Math.random()*GRID_SIZE);
+                    if(rx !== 0 || ry !== 0) nb[ry][rx] = 2;
                 }
                 const res = await c_solve(nb, 0, 0, 42);
                 if(res) {
                     const s = new Set(res.map(i => `${i.x},${i.y}`));
-                    for(let y=0; y<GRID_SIZE; y++) for(let x=0; x<GRID_SIZE; x++) if(nb[y][x]===0 && !s.has(`${x},${y}`)) nb[y][x]=2;
+                    for(let y=0; y<GRID_SIZE; y++) {
+                        for(let x=0; x<GRID_SIZE; x++) {
+                            if(nb[y][x] === 0 && !s.has(`${x},${y}`)) nb[y][x] = 2;
+                        }
+                    }
                     return { board: nb, solution: res, target: res.length };
                 }
                 await new Promise(r => setTimeout(r, 0));
@@ -278,90 +367,130 @@
         }
 
         window.c_generateStage = async function() {
-            // ホスト・オフライン以外は弾く
-            if (c_mode === 'online' && onMyRole !== 'p1') return; 
+            if (c_mode === 'online' && !isHost) return; 
             playSound('click');
-            clearInterval(c_timer); c_isOver = true; c_statusTxt.innerText = "作成中...";
+            clearInterval(c_timer); 
+            c_isOver = true; 
+            c_statusTxt.innerText = "作成中...";
             
             const data = await getNewStageData();
-            c_board = data.board; c_aiSolution = data.solution; c_target = data.target;
+            c_board = data.board; 
+            c_aiSolution = data.solution; 
+            c_target = data.target;
             
             if (c_mode === 'online') {
-                // Firebaseを上書きし、リスナーで両者同時に開始させる
-                await set(ref(db, `rooms/${onRoomId}`), { 
+                let updates = { 
                     board: JSON.stringify(c_board), 
-                    solution: JSON.stringify(c_aiSolution), // ヒント共有用
-                    target: c_target,
-                    p1: JSON.stringify([{x:0, y:0}]), 
-                    p2: JSON.stringify([{x:0, y:0}]), 
-                    status: "playing" 
-                });
+                    solution: JSON.stringify(c_aiSolution), 
+                    target: c_target, 
+                    rankCounter: 1 
+                };
+                for(let pid in onPlayers) {
+                    updates[`players/${pid}/path`] = JSON.stringify([{x:0, y:0}]);
+                    updates[`players/${pid}/rank`] = null;
+                }
+                await update(ref(db, `rooms/${onRoomId}`), updates);
             } else {
                 window.c_resetCurrentStage();
             }
         };
 
-        window.c_resetCurrentStage = function() {
-            if (c_mode === 'online' && onMyRole !== 'p1') return;
+        window.c_resetCurrentStage = async function() {
+            if (c_mode === 'online' && !isHost) return;
             playSound('click');
             
             if (c_mode === 'online') {
-                // サーバー側の状態を初期化（リスナーが検知して両者の画面をリセット）
-                set(ref(db, `rooms/${onRoomId}/p1`), JSON.stringify([{x:0, y:0}]));
-                set(ref(db, `rooms/${onRoomId}/p2`), JSON.stringify([{x:0, y:0}]));
-                set(ref(db, `rooms/${onRoomId}/winner`), null);
-                set(ref(db, `rooms/${onRoomId}/status`), "playing");
+                let updates = { rankCounter: 1 };
+                for(let pid in onPlayers) {
+                    updates[`players/${pid}/path`] = JSON.stringify([{x:0, y:0}]);
+                    updates[`players/${pid}/rank`] = null;
+                }
+                await update(ref(db, `rooms/${onRoomId}`), updates);
             } else {
-                clearInterval(c_timer); c_path = [{x:0, y:0}]; c_aiIdx = 1; c_isOver = false; c_hints = false;
-                c_statusTxt.innerText = c_mode==='battle' ? `Lv.${c_lv} 開始！` : "特訓中";
+                clearInterval(c_timer); 
+                c_path = [{x:0, y:0}]; 
+                c_aiIdx = 1; 
+                c_isOver = false; 
+                c_hints = false;
+                c_statusTxt.innerText = c_mode === 'battle' ? `Lv.${c_lv} 開始！` : "特訓中";
                 c_render();
-                if(c_mode==='battle') c_timer = setInterval(c_aiMove, c_speed);
+                if(c_mode === 'battle') c_timer = setInterval(c_aiMove, c_speed);
             }
         };
 
         function c_aiMove() {
             if(c_isOver) return;
             if(c_aiIdx < c_aiSolution.length) {
-                let c=c_aiSolution[c_aiIdx-1], n=c_aiSolution[c_aiIdx], dx=n.x-c.x, dy=n.y-c.y;
+                let c = c_aiSolution[c_aiIdx-1];
+                let n = c_aiSolution[c_aiIdx];
+                let dx = n.x - c.x, dy = n.y - c.y;
+
                 while(c_aiIdx < c_aiSolution.length) {
-                    let p1=c_aiSolution[c_aiIdx-1], p2=c_aiSolution[c_aiIdx];
-                    if(p2.x-p1.x===dx && p2.y-p1.y===dy) c_aiIdx++; else break;
+                    let p1 = c_aiSolution[c_aiIdx-1];
+                    let p2 = c_aiSolution[c_aiIdx];
+                    if(p2.x - p1.x === dx && p2.y - p1.y === dy) {
+                        c_aiIdx++; 
+                    } else {
+                        break;
+                    }
                 }
-                c_render(); playSound('move');
+                c_render(); 
+                playSound('move');
             }
-            if(c_aiIdx >= c_target) { c_isOver = true; c_statusTxt.innerText = "AIの勝利..."; playSound('lose'); }
+            if(c_aiIdx >= c_target) { 
+                c_isOver = true; 
+                c_statusTxt.innerText = "AIの勝利..."; 
+                playSound('lose'); 
+            }
         }
 
         function c_render() {
             [pCtx, aCtx].forEach((ctx, id) => {
-                ctx.clearRect(0,0,320,320);
-                for(let y=0; y<GRID_SIZE; y++) for(let x=0; x<GRID_SIZE; x++) {
-                    ctx.strokeStyle = "rgba(0,0,0,0.1)"; ctx.strokeRect(x*CELL_SIZE, y*CELL_SIZE, CELL_SIZE, CELL_SIZE);
-                    if(c_board[y][x]===2) { ctx.fillStyle="#5d4037"; ctx.fillRect(x*CELL_SIZE+2, y*CELL_SIZE+2, CELL_SIZE-4, CELL_SIZE-4); }
+                ctx.clearRect(0, 0, 320, 320);
+                for(let y=0; y<GRID_SIZE; y++) {
+                    for(let x=0; x<GRID_SIZE; x++) {
+                        ctx.strokeStyle = "rgba(0,0,0,0.1)"; 
+                        ctx.strokeRect(x * CELL_SIZE, y * CELL_SIZE, CELL_SIZE, CELL_SIZE);
+                        if(c_board[y][x] === 2) { 
+                            ctx.fillStyle = "#5d4037"; 
+                            ctx.fillRect(x * CELL_SIZE + 2, y * CELL_SIZE + 2, CELL_SIZE - 4, CELL_SIZE - 4); 
+                        }
+                    }
                 }
                 
-                // ヒント表示（オンライン・オフライン問わず、自分の画面(id===0)に表示）
-                if(id===0 && c_hints && c_aiSolution && c_aiSolution.length > 0) {
-                    c_aiSolution.forEach((p,i) => { 
-                        ctx.fillStyle="rgba(0,0,0,0.3)"; ctx.font="10px serif"; 
-                        ctx.fillText(i+1, p.x*CELL_SIZE+5, p.y*CELL_SIZE+15); 
+                if(id === 0 && c_hints && c_aiSolution && c_aiSolution.length > 0) {
+                    c_aiSolution.forEach((p, i) => { 
+                        ctx.fillStyle = "rgba(0,0,0,0.3)"; 
+                        ctx.font = "10px serif"; 
+                        ctx.fillText(i + 1, p.x * CELL_SIZE + 5, p.y * CELL_SIZE + 15); 
                     });
                 }
 
                 let cur;
-                if(id === 0) cur = c_path;
-                else cur = (c_mode === 'online') ? onOppPath : c_aiSolution.slice(0, c_aiIdx);
+                if(id === 0) {
+                    cur = c_path;
+                } else {
+                    if (c_mode === 'online') {
+                        cur = (currentViewTarget && onPlayers[currentViewTarget]) ? JSON.parse(onPlayers[currentViewTarget].path) : [];
+                    } else {
+                        cur = c_aiSolution.slice(0, c_aiIdx);
+                    }
+                }
 
-                const s = id===0 ? c_currentSkin : {body: "#3e2723", head: "#1a1a2e"};
+                const s = id === 0 ? c_currentSkin : {body: "#3e2723", head: "#1a1a2e"};
                 if (cur && cur.length > 0) {
                     cur.forEach((p, i) => {
-                        const isHead = i===cur.length-1;
+                        const isHead = i === cur.length - 1;
                         ctx.fillStyle = isHead ? s.head : s.body;
-                        ctx.beginPath(); ctx.roundRect(p.x*CELL_SIZE+4, p.y*CELL_SIZE+4, CELL_SIZE-8, CELL_SIZE-8, 4); ctx.fill();
+                        ctx.beginPath(); 
+                        ctx.roundRect(p.x * CELL_SIZE + 4, p.y * CELL_SIZE + 4, CELL_SIZE - 8, CELL_SIZE - 8, 4); 
+                        ctx.fill();
                         if(isHead) {
-                            ctx.fillStyle = id===0 ? "#000" : "#fff";
-                            ctx.beginPath(); ctx.arc(p.x*CELL_SIZE+CELL_SIZE*0.3, p.y*CELL_SIZE+CELL_SIZE*0.4, 2, 0, 7);
-                            ctx.arc(p.x*CELL_SIZE+CELL_SIZE*0.7, p.y*CELL_SIZE+CELL_SIZE*0.4, 2, 0, 7); ctx.fill();
+                            ctx.fillStyle = id === 0 ? "#000" : "#fff";
+                            ctx.beginPath(); 
+                            ctx.arc(p.x * CELL_SIZE + CELL_SIZE * 0.3, p.y * CELL_SIZE + CELL_SIZE * 0.4, 2, 0, 7);
+                            ctx.arc(p.x * CELL_SIZE + CELL_SIZE * 0.7, p.y * CELL_SIZE + CELL_SIZE * 0.4, 2, 0, 7); 
+                            ctx.fill();
                         }
                     });
                 }
@@ -370,175 +499,326 @@
 
         function c_move(dx, dy) {
             if(c_isOver) return;
-            let nx = c_path[c_path.length-1].x+dx, ny = c_path[c_path.length-1].y+dy, m = false;
-            while(nx>=0 && nx<GRID_SIZE && ny>=0 && ny<GRID_SIZE && c_board[ny][nx]===0 && !c_path.some(p => p.x===nx && p.y===ny)) {
-                c_path.push({x:nx, y:ny}); nx+=dx; ny+=dy; m = true;
-            }
-            if(m) { 
-                playSound('move'); c_render(); 
-                if (c_mode === 'online') set(ref(db, `rooms/${onRoomId}/${onMyRole}`), JSON.stringify(c_path));
+            let nx = c_path[c_path.length-1].x + dx;
+            let ny = c_path[c_path.length-1].y + dy;
+            let m = false;
 
-                if(c_path.length === c_target) { 
-                    c_isOver = true; clearInterval(c_timer); 
-                    playSound('win'); c_statusTxt.innerText = "勝利！"; 
-                    if (c_mode === 'online') set(ref(db, `rooms/${onRoomId}/winner`), onMyRole);
-                } 
+            while(nx>=0 && nx<GRID_SIZE && ny>=0 && ny<GRID_SIZE && c_board[ny][nx]===0 && !c_path.some(p => p.x===nx && p.y===ny)) {
+                c_path.push({x:nx, y:ny}); 
+                nx += dx; 
+                ny += dy; 
+                m = true;
+            }
+
+            if(m) { 
+                playSound('move'); 
+                c_render(); 
+
+                if (c_mode === 'online') {
+                    set(ref(db, `rooms/${onRoomId}/players/${myId}/path`), JSON.stringify(c_path));
+                } else {
+                    if(c_path.length === c_target) { 
+                        c_isOver = true; 
+                        clearInterval(c_timer); 
+                        playSound('win'); 
+                        c_statusTxt.innerText = "勝利！"; 
+                    }
+                }
             }
         }
 
         window.c_startMode = function(m, s, l) { 
-            playSound('click'); c_mode=m; c_speed=s; c_lv=l; 
+            playSound('click'); 
+            c_mode = m; 
+            c_speed = s; 
+            c_lv = l; 
+            
             document.getElementById('cat-menu').classList.add('hidden'); 
             document.getElementById('cat-game-container').classList.remove('hidden'); 
 
             document.getElementById('onCat-room-info').classList.add('hidden');
+            document.getElementById('ranking-area').classList.add('hidden');
+            
             document.getElementById('btn-new').classList.remove('hidden');
             document.getElementById('btn-reset').classList.remove('hidden');
             document.getElementById('btn-back').classList.remove('hidden');
             document.getElementById('btn-quit').classList.add('hidden');
             
-            document.getElementById('opp-label').innerText = "AI";
-            document.getElementById('ai-side').style.display = m==='battle' ? 'block' : 'none';
+            document.getElementById('opp-label-text').innerText = "AI";
+            document.getElementById('opp-label-text').classList.remove('hidden');
+            document.getElementById('view-player-select').classList.add('hidden');
+            document.getElementById('ai-side').style.display = m === 'battle' ? 'block' : 'none';
 
             window.c_generateStage(); 
         };
 
-        window.c_toggleHint = function() { playSound('click'); c_hints=!c_hints; c_render(); };
+        window.c_toggleHint = function() { 
+            playSound('click'); 
+            c_hints = !c_hints; 
+            c_render(); 
+        };
 
         window.addEventListener('keydown', e => {
             if(document.getElementById('cat-game-container').classList.contains('hidden')) return;
             const k = e.key.toLowerCase();
-            if(k==='arrowup') { c_move(0,-1); e.preventDefault(); } if(k==='arrowdown') { c_move(0,1); e.preventDefault(); }
-            if(k==='arrowleft') { c_move(-1,0); e.preventDefault(); } if(k==='arrowright') { c_move(1,0); e.preventDefault(); }
             
-            // キーボードショートカット (ホスト・オフライン専用機能)
-            if(c_mode !== 'online' || onMyRole === 'p1') {
-                if(k==='r') window.c_resetCurrentStage(); 
-                if(k==='n') window.c_generateStage(); 
+            if(k === 'arrowup') { c_move(0, -1); e.preventDefault(); } 
+            if(k === 'arrowdown') { c_move(0, 1); e.preventDefault(); }
+            if(k === 'arrowleft') { c_move(-1, 0); e.preventDefault(); } 
+            if(k === 'arrowright') { c_move(1, 0); e.preventDefault(); }
+            
+            if(c_mode !== 'online' || isHost) {
+                if(k === 'r') window.c_resetCurrentStage(); 
+                if(k === 'n') window.c_generateStage(); 
             }
-            if(k==='1') window.c_toggleHint();
+            if(k === '1') window.c_toggleHint();
         });
 
-
         // ==========================================
-        // オンライン機能 (Firebase)
+        // オンライン機能 (最大30人対応)
         // ==========================================
-        let onRoomId = "", onMyRole = "", onOppPath = [];
+        let onRoomId = "", myId = "", myName = "", isHost = false;
+        let onPlayers = {}; 
+        let currentViewTarget = null;
 
         window.onCat_createRoom = async function() {
             playSound('click');
-            onRoomId = Math.floor(1000 + Math.random() * 9000).toString();
-            onMyRole = "p1";
-            
-            document.getElementById('online-menu').classList.add('hidden');
-            document.getElementById('cat-game-container').classList.remove('hidden');
-            
-            document.getElementById('onCat-room-info').innerText = "🔑 合言葉: " + onRoomId;
-            document.getElementById('onCat-room-info').classList.remove('hidden');
-            
-            // ホストなので新盤面・リセットボタンは表示
-            document.getElementById('btn-new').classList.remove('hidden');
-            document.getElementById('btn-reset').classList.remove('hidden');
-            document.getElementById('btn-back').classList.add('hidden');
-            document.getElementById('btn-quit').classList.remove('hidden');
+            myName = document.getElementById('player-name').value || "名無し";
+            localStorage.setItem("woodenGamePlayerName", myName);
+            document.getElementById('my-name-display').innerText = `(${myName})`;
 
-            document.getElementById('opp-label').innerText = "あいて";
-            document.getElementById('ai-side').style.display = 'block';
+            myId = "p_" + Math.random().toString(36).substr(2, 9);
+            onRoomId = Math.floor(1000 + Math.random() * 9000).toString();
+            isHost = true;
             
-            c_statusTxt.innerText = "盤面作成＆待機中...";
-            c_mode = 'online'; c_isOver = true;
-            onOppPath = [{x:0, y:0}]; c_path = [{x:0, y:0}];
+            setupOnlineUI();
             
             const data = await getNewStageData();
-            c_board = data.board; c_target = data.target; c_aiSolution = data.solution;
+            c_board = data.board; 
+            c_target = data.target; 
+            c_aiSolution = data.solution;
             
             await set(ref(db, `rooms/${onRoomId}`), { 
                 board: JSON.stringify(c_board), 
                 solution: JSON.stringify(c_aiSolution),
                 target: c_target,
-                p1: JSON.stringify([{x:0, y:0}]), 
-                status: "waiting" 
+                host: myId,
+                status: "waiting",
+                rankCounter: 1,
+                players: { 
+                    [myId]: { 
+                        name: myName, 
+                        path: JSON.stringify([{x:0, y:0}]), 
+                        rank: null, 
+                        score: 0 
+                    } 
+                }
             });
             
-            onDisconnect(ref(db, `rooms/${onRoomId}`)).remove();
-            c_render(); onCat_listen();
+            onDisconnect(ref(db, `rooms/${onRoomId}/players/${myId}`)).remove();
+            c_render(); 
+            onCat_listen();
         };
 
-        window.onCat_joinRoom = function() {
+        window.onCat_joinRoom = async function() {
             playSound('click');
             onRoomId = document.getElementById('join-room-id').value;
             if(!onRoomId) return alert("合言葉を入力してください");
-            onMyRole = "p2";
+
+            myName = document.getElementById('player-name').value || "名無し";
+            localStorage.setItem("woodenGamePlayerName", myName);
+            document.getElementById('my-name-display').innerText = `(${myName})`;
+
+            const snap = await get(ref(db, `rooms/${onRoomId}`));
+            if(!snap.exists()) return alert("部屋が見つかりません。");
             
+            const rData = snap.val();
+            if(rData.players && Object.keys(rData.players).length >= 30) {
+                return alert("部屋が満員です（最大30人）");
+            }
+
+            myId = "p_" + Math.random().toString(36).substr(2, 9);
+            isHost = false;
+            
+            setupOnlineUI();
+
+            await set(ref(db, `rooms/${onRoomId}/players/${myId}`), {
+                name: myName, 
+                path: JSON.stringify([{x:0, y:0}]), 
+                rank: null, 
+                score: 0
+            });
+            
+            onDisconnect(ref(db, `rooms/${onRoomId}/players/${myId}`)).remove();
+            onCat_listen();
+        };
+
+        function setupOnlineUI() {
             document.getElementById('online-menu').classList.add('hidden');
             document.getElementById('cat-game-container').classList.remove('hidden');
             
             document.getElementById('onCat-room-info').innerText = "🔑 合言葉: " + onRoomId;
             document.getElementById('onCat-room-info').classList.remove('hidden');
+            document.getElementById('ranking-area').classList.remove('hidden');
             
-            // ゲストなので新盤面・リセットボタンは隠す
-            document.getElementById('btn-new').classList.add('hidden');
-            document.getElementById('btn-reset').classList.add('hidden');
+            document.getElementById('btn-new').classList.toggle('hidden', !isHost);
+            document.getElementById('btn-reset').classList.toggle('hidden', !isHost);
             document.getElementById('btn-back').classList.add('hidden');
             document.getElementById('btn-quit').classList.remove('hidden');
 
-            document.getElementById('opp-label').innerText = "あいて";
+            document.getElementById('opp-label-text').classList.add('hidden');
+            document.getElementById('view-player-select').classList.remove('hidden');
             document.getElementById('ai-side').style.display = 'block';
-
-            c_mode = 'online'; c_isOver = true;
-            onOppPath = [{x:0, y:0}]; c_path = [{x:0, y:0}];
-            c_statusTxt.innerText = "接続しました！";
             
-            set(ref(db, `rooms/${onRoomId}/p2`), JSON.stringify([{x:0, y:0}]));
-            set(ref(db, `rooms/${onRoomId}/status`), "playing");
-            onDisconnect(ref(db, `rooms/${onRoomId}/p2`)).remove();
-            onCat_listen();
-        };
+            c_statusTxt.innerText = isHost ? "盤面作成＆待機中..." : "接続しました！";
+            c_mode = 'online'; 
+            c_isOver = true; 
+            wasFinished = false;
+            c_path = [{x:0, y:0}];
+        }
 
         function onCat_listen() {
             onValue(ref(db, `rooms/${onRoomId}`), (snap) => {
                 const data = snap.val();
-                if(!data) { c_statusTxt.innerText = "相手が切断しました"; c_isOver = true; return; }
-                
-                // 盤面の取得
-                if(data.board) { 
-                    c_board = JSON.parse(data.board); 
-                    c_target = data.target; 
-                    if(data.solution) c_aiSolution = JSON.parse(data.solution); 
+                if(!data) { 
+                    c_statusTxt.innerText = "部屋が解散しました"; 
+                    c_isOver = true; 
+                    return; 
                 }
                 
-                // パスの同期とリセット検知
-                const myPathStr = data[onMyRole];
-                const oppRole = onMyRole === "p1" ? "p2" : "p1";
-                const oppPathStr = data[oppRole];
-
-                if(oppPathStr) onOppPath = JSON.parse(oppPathStr);
-
-                if(myPathStr) {
-                    const parsedMyPath = JSON.parse(myPathStr);
-                    // サーバー側でパスがリセットされたことを検知
-                    if(parsedMyPath.length === 1 && parsedMyPath[0].x === 0 && parsedMyPath[0].y === 0) {
-                        if(c_path.length > 1 || c_isOver) { // すでに動いているか終わっている場合のみリセット処理
-                            c_path = [{x:0, y:0}];
-                            c_isOver = false;
-                            c_hints = false; // ヒントも一旦オフ
-                            c_statusTxt.innerText = "🔥 対戦中！すべて塗りつぶせ！"; 
-                        }
+                if(!isHost && data.board) { 
+                    c_board = JSON.parse(data.board); 
+                    c_target = data.target; 
+                    if(data.solution) {
+                        c_aiSolution = JSON.parse(data.solution); 
                     }
                 }
 
-                // 勝敗判定
-                if(data.winner && !c_isOver) {
-                    c_isOver = true;
-                    if(data.winner === onMyRole) { c_statusTxt.innerText = "🎉 あなたの勝利！"; playSound('win'); }
-                    else { c_statusTxt.innerText = "💀 相手の勝利..."; playSound('lose'); }
-                } else if (!data.winner && data.status === "playing" && c_path.length === 1) {
-                    // 両者待機完了で対戦開始
-                    c_isOver = false;
-                    c_statusTxt.innerText = "🔥 対戦中！すべて塗りつぶせ！"; 
+                onPlayers = data.players || {};
+                let me = onPlayers[myId];
+                if(!me) return; 
+
+                let myServerPath = JSON.parse(me.path);
+
+                if(myServerPath.length === 1 && myServerPath[0].x === 0 && myServerPath[0].y === 0) {
+                    if(c_path.length > 1 || c_isOver) {
+                        c_path = [{x:0, y:0}]; 
+                        c_isOver = false; 
+                        c_hints = false; 
+                        wasFinished = false;
+                        c_statusTxt.innerText = "🔥 対戦中！すべて塗りつぶせ！"; 
+                    }
+                } else if (!c_isOver && c_path.length === 1 && myServerPath.length > 1) {
+                     c_statusTxt.innerText = "🔥 対戦中！すべて塗りつぶせ！"; 
                 }
 
+                if(isHost) {
+                    let rCount = data.rankCounter || 1;
+                    let updates = {};
+                    let changed = false;
+
+                    for(let pid in onPlayers) {
+                        let pData = onPlayers[pid];
+                        let pPath = JSON.parse(pData.path);
+
+                        if(pPath.length === c_target && !pData.rank) {
+                            pData.rank = rCount;
+                            if(rCount === 1) {
+                                pData.score = (pData.score || 0) + 1;
+                            }
+                            updates[`players/${pid}/rank`] = pData.rank;
+                            if(rCount === 1) {
+                                updates[`players/${pid}/score`] = pData.score;
+                            }
+                            rCount++; 
+                            changed = true;
+                        }
+                    }
+                    if(changed) { 
+                        updates[`rankCounter`] = rCount; 
+                        update(ref(db, `rooms/${onRoomId}`), updates); 
+                    }
+                }
+
+                if(me.rank && !wasFinished) {
+                    c_isOver = true; 
+                    wasFinished = true;
+                    if(me.rank === 1) {
+                        playSound('win'); 
+                    } else {
+                        playSound('lose');
+                    }
+                    c_statusTxt.innerText = `🎉 ゴール！ あなたは ${me.rank} 位です！`;
+                }
+
+                updateViewSelect();
+                updateRanking();
                 c_render();
+            });
+        }
+
+        function updateViewSelect() {
+            const sel = document.getElementById('view-player-select');
+            let prevVal = sel.value; 
+            sel.innerHTML = "";
+
+            if(c_mode !== 'online') return;
+
+            let count = 0;
+            for(let pid in onPlayers) {
+                if(pid === myId) continue; 
+                let opt = document.createElement('option');
+                opt.value = pid;
+                let pData = onPlayers[pid];
+                opt.text = pData.name + (pData.rank ? ` (🏁${pData.rank}位)` : "");
+                sel.appendChild(opt); 
+                count++;
+            }
+
+            if(count > 0) {
+                if(prevVal && onPlayers[prevVal]) {
+                    sel.value = prevVal; 
+                } else {
+                    sel.selectedIndex = 0;
+                }
+                currentViewTarget = sel.value;
+            } else {
+                let opt = document.createElement('option'); 
+                opt.text = "他プレイヤーなし"; 
+                sel.appendChild(opt);
+                currentViewTarget = null;
+            }
+        }
+
+        window.changeViewTarget = function() { 
+            currentViewTarget = document.getElementById('view-player-select').value; 
+            c_render(); 
+        };
+
+        function updateRanking() {
+            const rList = document.getElementById('ranking-list'); 
+            rList.innerHTML = "";
+            if(c_mode !== 'online') return;
+            
+            let arr = Object.keys(onPlayers).map(pid => ({ id: pid, ...onPlayers[pid] }));
+            
+            arr.sort((a, b) => {
+                if(b.score !== a.score) return b.score - a.score;
+                if(a.rank && b.rank) return a.rank - b.rank;
+                if(a.rank) return -1; 
+                if(b.rank) return 1;
+                return 0;
+            });
+
+            arr.forEach(p => {
+                let div = document.createElement('div');
+                div.className = 'rank-item';
+                div.style.background = (p.id === myId) ? "var(--accent)" : "rgba(0,0,0,0.3)";
+                div.style.color = (p.id === myId) ? "#000" : "#fff";
+                
+                let rankText = p.rank ? `[🏁${p.rank}位]` : "[走行中]";
+                div.innerText = `${p.name} : ${p.score}勝 ${rankText}`;
+                rList.appendChild(div);
             });
         }
 
@@ -546,82 +826,130 @@
         // フラッシュ暗算 ロジック
         // ==========================================
         let flashSum = 0;
+        
         window.startFlash = function(lv) {
-            playSound('click');
-            document.getElementById('flash-setup').classList.add('hidden');
-            document.getElementById('flash-game').classList.remove('hidden');
+            playSound('click'); 
+            document.getElementById('flash-setup').classList.add('hidden'); 
+            document.getElementById('flash-game').classList.remove('hidden'); 
             document.getElementById('flash-answer-area').classList.add('hidden');
-            const display = document.getElementById('flash-display');
-            const count = 3 + lv; const speed = 1000 - (lv * 100); const range = lv * 10;
             
-            flashSum = 0; let currentCount = 0;
-            display.innerText = "準備完了"; display.style.color = "var(--accent)";
+            const display = document.getElementById('flash-display'); 
+            const count = 3 + lv; 
+            const speed = 1000 - (lv * 100); 
+            const range = lv * 10;
+            
+            flashSum = 0; 
+            let currentCount = 0; 
+            display.innerText = "準備完了"; 
+            display.style.color = "var(--accent)";
 
-            setTimeout(() => {
-                const interval = setInterval(() => {
-                    if (currentCount < count) {
-                        let num = Math.floor(Math.random() * range) + 1;
-                        display.innerText = num; flashSum += num; currentCount++; playSound('move');
-                    } else {
-                        clearInterval(interval); display.innerText = "？"; playSound('click');
-                        document.getElementById('flash-answer-area').classList.remove('hidden');
-                        document.getElementById('flash-input').value = ""; document.getElementById('flash-input').focus();
-                    }
-                }, speed);
+            setTimeout(() => { 
+                const interval = setInterval(() => { 
+                    if (currentCount < count) { 
+                        let num = Math.floor(Math.random() * range) + 1; 
+                        display.innerText = num; 
+                        flashSum += num; 
+                        currentCount++; 
+                        playSound('move'); 
+                    } else { 
+                        clearInterval(interval); 
+                        display.innerText = "？"; 
+                        playSound('click'); 
+                        document.getElementById('flash-answer-area').classList.remove('hidden'); 
+                        document.getElementById('flash-input').value = ""; 
+                        document.getElementById('flash-input').focus(); 
+                    } 
+                }, speed); 
             }, 1000);
         };
 
         window.checkFlashAnswer = function() {
-            const ans = parseInt(document.getElementById('flash-input').value);
+            const ans = parseInt(document.getElementById('flash-input').value); 
             const display = document.getElementById('flash-display');
-            if (ans === flashSum) { display.innerText = "大正解！"; display.style.color = "#4caf50"; playSound('win'); }
-            else { display.innerText = "残念: " + flashSum; display.style.color = "#f44336"; playSound('lose'); }
-            setTimeout(() => window.showMenu('flash-container'), 2000);
+            
+            if (ans === flashSum) { 
+                display.innerText = "大正解！"; 
+                display.style.color = "#4caf50"; 
+                playSound('win'); 
+            } else { 
+                display.innerText = "残念: " + flashSum; 
+                display.style.color = "#f44336"; 
+                playSound('lose'); 
+            }
+            
+            setTimeout(() => {
+                window.showMenu('flash-container');
+            }, 2000);
         };
 
         // ==========================================
         // 記憶力タイル ロジック
         // ==========================================
-        let memSequence = [], userSequence = [], isInputPhase = false;
+        let memSequence = [];
+        let userSequence = [];
+        let isInputPhase = false;
+        
         const memGrid = document.getElementById('memory-grid');
-        for(let i=0; i<16; i++) {
-            const d = document.createElement('div'); d.className = 'tile';
-            d.onclick = () => handleTileClick(i); memGrid.appendChild(d);
+        for(let i=0; i<16; i++) { 
+            const d = document.createElement('div'); 
+            d.className = 'tile'; 
+            d.onclick = () => handleTileClick(i); 
+            memGrid.appendChild(d); 
         }
         
         window.startMemory = function(len) {
-            playSound('click');
-            document.getElementById('mem-setup').classList.add('hidden');
-            memSequence = []; userSequence = []; isInputPhase = false;
+            playSound('click'); 
+            document.getElementById('mem-setup').classList.add('hidden'); 
+            memSequence = []; 
+            userSequence = []; 
+            isInputPhase = false; 
             document.getElementById('mem-status').innerText = "記憶してください...";
-            for(let i=0; i<len; i++) memSequence.push(Math.floor(Math.random()*16));
+            
+            for(let i=0; i<len; i++) {
+                memSequence.push(Math.floor(Math.random() * 16)); 
+            }
             showSequence();
         };
 
         async function showSequence() {
             const tiles = document.querySelectorAll('.tile');
-            for(let idx of memSequence) {
-                await new Promise(r => setTimeout(r, 600));
-                playSound('click'); tiles[idx].classList.add('active');
-                await new Promise(r => setTimeout(r, 400));
-                tiles[idx].classList.remove('active');
+            for(let idx of memSequence) { 
+                await new Promise(r => setTimeout(r, 600)); 
+                playSound('click'); 
+                tiles[idx].classList.add('active'); 
+                await new Promise(r => setTimeout(r, 400)); 
+                tiles[idx].classList.remove('active'); 
             }
-            isInputPhase = true; document.getElementById('mem-status').innerText = "順番にタップ！";
+            isInputPhase = true; 
+            document.getElementById('mem-status').innerText = "順番にタップ！";
         }
 
         function handleTileClick(i) {
-            if(!isInputPhase) return;
-            playSound('move');
+            if(!isInputPhase) return; 
+            playSound('move'); 
             const tiles = document.querySelectorAll('.tile');
-            tiles[i].classList.add('active'); setTimeout(() => tiles[i].classList.remove('active'), 200);
+            tiles[i].classList.add('active'); 
+            
+            setTimeout(() => {
+                tiles[i].classList.remove('active');
+            }, 200); 
+            
             userSequence.push(i);
             
-            if(userSequence[userSequence.length-1] !== memSequence[userSequence.length-1]) {
-                document.getElementById('mem-status').innerText = "失敗..."; isInputPhase = false; playSound('lose');
-                setTimeout(() => window.showMenu('memory-container'), 1500);
-            } else if(userSequence.length === memSequence.length) {
-                document.getElementById('mem-status').innerText = "完璧！クリア！"; isInputPhase = false; playSound('win');
-                setTimeout(() => window.showMenu('memory-container'), 1500);
+            if(userSequence[userSequence.length-1] !== memSequence[userSequence.length-1]) { 
+                document.getElementById('mem-status').innerText = "失敗..."; 
+                isInputPhase = false; 
+                playSound('lose'); 
+                setTimeout(() => {
+                    window.showMenu('memory-container');
+                }, 1500); 
+            } else if(userSequence.length === memSequence.length) { 
+                document.getElementById('mem-status').innerText = "完璧！クリア！"; 
+                isInputPhase = false; 
+                playSound('win'); 
+                setTimeout(() => {
+                    window.showMenu('memory-container');
+                }, 1500); 
             }
         }
     </script>
